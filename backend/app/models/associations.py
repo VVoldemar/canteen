@@ -15,9 +15,9 @@ from app.models.base import SqlAlchemyBase
 
 
 class ApplicationItem(SqlAlchemyBase):
-    __tablename__ = "apllication_items"
+    __tablename__ = "application_items"
 
-    apllication_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), primary_key=True)
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id"), primary_key=True)
 
     quantity: Mapped[int] = mapped_column(Integer(), default=1, nullable=False)
@@ -47,7 +47,7 @@ class OrderItem(SqlAlchemyBase):
 
 
 class MenuItem(SqlAlchemyBase):
-    __tablename__ = "munu_items"
+    __tablename__ = "menu_items"
 
     menu_id: Mapped[int] = mapped_column(ForeignKey("menu.id"), primary_key=True)
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"), primary_key=True)

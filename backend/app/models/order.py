@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import List
-from sqlalchemy import  DateTime, Enum, ForeignKey
+from sqlalchemy import  DateTime, Enum, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import OrderStatus
@@ -11,7 +12,8 @@ class Order(SqlAlchemyBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    datetime: Mapped[str] = mapped_column(DateTime())
+    ordered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=func.now(), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.PAID, nullable=False)
 
     dishes: Mapped[List["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
