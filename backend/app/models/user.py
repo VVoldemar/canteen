@@ -16,7 +16,7 @@ class User(SqlAlchemyBase):
     patronymic: Mapped[str | None] = mapped_column(String())
     password: Mapped[str] = mapped_column(String(), nullable=False)
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now, nullable=False)
-    salt: Mapped[str] = mapped_column(String(), nullable=False)
+    salt: Mapped[str] = mapped_column(String(), nullable=False) # Соль для хеширования пароля
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.STUDENT, nullable=False)
     banned: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
     
