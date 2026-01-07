@@ -17,3 +17,9 @@ class OrderStatus(str, Enum):
     SERVED = "served"   
     CANCELLED = "cancelled"
     
+
+class Reports(str, Enum):
+    PAYMENT = "payments" 
+    ATTEND = "attendance"
+    DISH = "dishes"
+    ALL = "full"
