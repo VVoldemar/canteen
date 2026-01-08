@@ -2,12 +2,13 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from core.enums import Measures
+from annotations import Price, Name
 
 
 class IngredientResponse(BaseModel):
     id: int
-    name: str
-    price: int
+    name: Name
+    price: Price
     measure: Measures
 
 
@@ -19,21 +20,21 @@ class IngredientResponse(BaseModel):
 
 
 class CreateIngredientRequest(BaseModel):
-    name: str
+    name: Name
     price: int = Field(ge=0)
     measure: Measures
 
 
 class UpdateIngredientRequest(BaseModel):
-    name: Optional[str] = None
+    name: Optional[Name] = None
     price: Optional[int] = Field(None, ge=0)
     measure: Optional[Measures] = None
 
 
 class DishResponse(BaseModel):
     id: int
-    name: str
-    price: int
+    name: Name
+    price: Price
 
 
 # class PaginatedDishResponse(BaseModel):
@@ -55,18 +56,18 @@ class DishIngredientLink(BaseModel):
 
 class DishDetailResponse(BaseModel):
     id: int
-    name: str
-    price: int
+    name: Name
+    price: Price
     ingredients: List[DishIngredientResponse]
 
 
 class CreateDishRequest(BaseModel):
-    name: str
-    price: int = Field(ge=0)
+    name: Name
+    price: Price
     ingredients: List[DishIngredientLink]
 
 
 class UpdateDishRequest(BaseModel):
-    name: Optional[str] = None
-    price: Optional[int] = Field(None, ge=0)
+    name: Optional[Name] = None
+    price: Optional[Price] = None
     ingredients: Optional[List[DishIngredientLink]] = None

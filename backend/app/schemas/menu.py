@@ -2,23 +2,24 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from dish import DishResponse
+from annotations import Name
 
 class MenuResponse(BaseModel):
     id: int
-    name: str
+    name: Name
 
 
 class MenuDetailResponse(BaseModel):
     id: int
-    name: str
+    name: Name
     items: List[DishResponse]
 
 
 class CreateMenuRequest(BaseModel):
-    name: str
+    name: Name
     dish_ids: List[int]
 
 
 class UpdateMenuRequest(BaseModel):
-    name: Optional[str] = None
+    name: Optional[Name] = None
     dish_ids: Optional[List[int]] = None

@@ -1,16 +1,18 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
+from annotations import Password, Name, Surname
+
 
 class RegisterRequest(BaseModel):
-    name: str
-    surname: str
+    name: Name
+    surname: Surname
     patronymic: Optional[str] = None
-    password: str = Field(min_length=6)
+    password: Password
 
 
 class LoginRequest(BaseModel):
-    surname: str
+    surname: Surname
     password: str
 
 

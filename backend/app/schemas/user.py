@@ -1,7 +1,9 @@
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
+
 from core.enums import UserRole
+from annotations import Password
 
 
 class UserResponse(BaseModel):
@@ -24,10 +26,10 @@ class UserResponse(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    name: Optional[str] = None
-    surname: Optional[str] = None
+    name: str
+    surname: str
     patronymic: Optional[str] = None
-    password: Optional[str] = Field(None, min_length=6)
+    password: Password
 
 
 # class AdminUpdateUserRequest(BaseModel):
