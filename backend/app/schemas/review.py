@@ -13,16 +13,9 @@ class ReviewResponse(BaseModel):
     datetime: datetime
 
 
-# class PaginatedReviewResponse(BaseModel):
-#     items: List[ReviewResponse]
-#     total: int
-#     page: int
-#     pages: int
-
-
 class CreateReviewRequest(BaseModel):
-    rating: Optional[Rating] = None
-    content: str
+    rating: Optional[int] = Field(None, ge=0, le=10)
+    content: str 
 
 
 class UpdateReviewRequest(BaseModel):

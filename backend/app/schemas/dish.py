@@ -1,8 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from core.enums import Measures
-from annotations import Price, Name
+from app.core.enums import Measures
 
 
 class IngredientResponse(BaseModel):
@@ -12,11 +11,11 @@ class IngredientResponse(BaseModel):
     measure: Measures
 
 
-# class PaginatedIngredientResponse(BaseModel):
-#     items: List[IngredientResponse]
-#     total: int
-#     page: int
-#     pages: int
+class PaginatedIngredientResponse(BaseModel):
+    items: List[IngredientResponse]
+    total: int
+    page: int
+    pages: int
 
 
 class CreateIngredientRequest(BaseModel):
@@ -36,13 +35,11 @@ class DishResponse(BaseModel):
     name: Name
     price: Price
 
-
-# class PaginatedDishResponse(BaseModel):
-#     items: List[DishResponse]
-#     total: int
-#     page: int
-#     pages: int
-
+class PaginatedDishResponse(BaseModel):
+    items: List[IngredientResponse]
+    total: int
+    page: int
+    pages: int
 
 class DishIngredientResponse(BaseModel):
     ingredient: IngredientResponse
