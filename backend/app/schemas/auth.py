@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class RegisterRequest(BaseModel):
+    email: str
     name: str
     surname: str
     patronymic: Optional[str] = None

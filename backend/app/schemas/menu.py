@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from dish import DishResponse
+from app.schemas.dish import DishResponse
 
 class MenuResponse(BaseModel):
     id: int
