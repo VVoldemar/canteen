@@ -5,8 +5,9 @@ from annotations import Password, Name, Surname
 
 
 class RegisterRequest(BaseModel):
-    name: Name
-    surname: Surname
+    email: str
+    name: str
+    surname: str
     patronymic: Optional[str] = None
     password: Password
 

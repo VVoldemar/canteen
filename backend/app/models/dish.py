@@ -30,3 +30,4 @@ class Dish(SqlAlchemyBase):
     ingredients: Mapped[List["DishIngredient"]] = relationship(back_populates="dish", cascade="all, delete-orphan")
     orders: Mapped[List["OrderItem"]] = relationship(back_populates="dish", cascade="all, delete-orphan")
     menu_occurrences: Mapped[List["MenuItem"]] = relationship(back_populates="dish", cascade="all, delete-orphan")
+    reviews: Mapped[List["Review"]] = relationship(back_populates="dish", cascade="all, delete-orphan")

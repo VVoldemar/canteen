@@ -2,21 +2,14 @@ from typing import List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from order import OrderStatus
-from dish import IngredientResponse
+from app.core.enums import OrderStatus
+from app.schemas.dish import IngredientResponse
 
 class ApplicationResponse(BaseModel):
     id: int
     user_id: int
     datetime: datetime
     status: OrderStatus
-
-
-# class PaginatedApplicationResponse(BaseModel):
-#     items: List[ApplicationResponse]
-#     total: int
-#     page: int
-#     pages: int
 
 
 class ApplicationProductResponse(BaseModel):

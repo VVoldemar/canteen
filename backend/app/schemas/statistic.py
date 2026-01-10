@@ -2,7 +2,7 @@ from typing import Optional, List
 from datetime import date
 from pydantic import BaseModel, Field, ConfigDict
 
-from dish import DishResponse
+from app.schemas.dish import DishResponse
 
 class Period(BaseModel):
     from_: date = Field(alias="from")
