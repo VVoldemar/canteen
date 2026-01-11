@@ -1,8 +1,10 @@
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
-from app.core.enums import UserRole
+from pydantic import BaseModel
 
+from app.schemas.annotations import Password
+
+from app.core.enums import UserRole
 
 class UserResponse(BaseModel):
     id: int
