@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security.jwt import decode_token
+from app.core.enums import UserRole
 from app.crud.user import users_manager
 from app.api.deps import get_session
 
@@ -22,11 +23,11 @@ async def get_current_user(
     return await users_manager.get_by_id(session, int(payload["sub"]))
 
 
-def require_roles(*allowed_roles: str):
+def require_roles(*allowed_roles: UserRole):
     async def dep(user=Depends(get_current_user)):
-        role = user.role
+        role = UserRole(user.role)
 
-        if role == "admin":
+        if role == UserRole.ADMIN:
             return user
 
         if role not in allowed_roles:

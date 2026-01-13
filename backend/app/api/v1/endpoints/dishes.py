@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.core.security.auth import require_roles
+from app.core.enums import UserRole
 
 
 dishes_router = APIRouter(prefix='/dishes', tags=['Dishes'])
@@ -10,20 +11,20 @@ async def get_dishes():
 
 
 @dishes_router.post('/', summary='Создать новое блюдо', description='')
-async def create_dish(user=Depends(require_roles("admin", 'cook'))):
+async def create_dish(user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK))):
     pass
 
 
 @dishes_router.get('/{dish_id}', summary='Получить информацию о блюде', description='')
-async def get_dish(dish_id: int, user=Depends(require_roles("admin", 'cook', 'student'))):
+async def get_dish(dish_id: int):
     pass
 
 
 @dishes_router.patch('/{dish_id}', summary='Oбновить блюдо', description='Доступно только администраторам и поварам')
-async def update_dish(dish_id: int, user=Depends(require_roles("admin", 'cook'))):
+async def update_dish(dish_id: int, user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK))):
     pass
 
 
 @dishes_router.delete('/{dish_id}', summary='Удалить блюдо', description='Доступно только администраторам')
-async def delete_dish(dish_id: int, user=Depends(require_roles("admin"))):
+async def delete_dish(dish_id: int, user=Depends(require_roles(UserRole.ADMIN))):
     pass
