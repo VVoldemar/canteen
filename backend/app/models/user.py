@@ -14,9 +14,9 @@ class User(SqlAlchemyBase):
     name: Mapped[str] = mapped_column(String(), nullable=False)
     surname: Mapped[str] = mapped_column(String(), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String())
+    email: Mapped[str] = mapped_column(String(), nullable=False)
     password: Mapped[str] = mapped_column(String(), nullable=False)
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now, nullable=False)
-    salt: Mapped[str] = mapped_column(String(), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.STUDENT, nullable=False)
     banned: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
     

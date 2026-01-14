@@ -22,12 +22,29 @@ from app.schemas.user import (
     AdminUpdateUserRequest,
 )
 
+from app.core.security.password import hash_password
+
 
 logger = logging.getLogger(__name__)
 
 class UserCRUD:
     def __init__(self, model):
         self.model = model
+
+    async def get_by_email(self, session: AsyncSession, email: str) -> User:
+        """
+        Возвращает ORM модель.
+        """
+        stmt = select(self.model).where(self.model.email == email)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return user
 
     async def get_by_id(self, session: AsyncSession, id: int) -> User:
         """
@@ -62,21 +79,20 @@ class UserCRUD:
 
     async def create(self, session: AsyncSession, new_user: RegisterRequest) -> User:
         try:
-            stmt = select(self.model).where(self.model.surname == new_user.surname)
+            stmt = select(self.model).where(self.model.email == new_user.email)
             if (await session.execute(stmt)).scalar_one_or_none():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="User already exists"
                 )
-            
-            # TODO: implement password_hash function for secure password storage
-            hashed_password = password_hash(new_user.password)
+            hashed_password = hash_password(new_user.password)
             
             db_user = self.model(
                 name=new_user.name,
                 surname=new_user.surname,
+                email=new_user.email,
                 patronymic=new_user.patronymic,
-                password=hashed_password, 
+                password=hashed_password,
             )
             
             session.add(db_user)
