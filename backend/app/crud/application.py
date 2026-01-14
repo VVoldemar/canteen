@@ -47,7 +47,7 @@ class ApplicationCRUD:
         self,
         session: AsyncSession,
         params: PaginationParams,
-        status: Optional[OrderStatus] = None
+        status: Optional[OrderStatus] = None,
     ) -> PaginatedResponse[ApplicationResponse]:
         """
         Get a list of applications with status filtering.
