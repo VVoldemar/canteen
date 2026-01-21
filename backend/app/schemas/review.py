@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from annotations import Rating
 
@@ -11,10 +11,12 @@ class ReviewResponse(BaseModel):
     rating: Optional[Rating] = None
     content: Optional[str] = None
     datetime: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateReviewRequest(BaseModel):
-    rating: Optional[int] = Field(None, ge=0, le=10)
+    rating: Rating = None
     content: str 
 
 

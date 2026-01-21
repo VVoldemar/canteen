@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import  datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.core.enums import OrderStatus
 from app.schemas.dish import DishResponse
@@ -12,10 +12,14 @@ class OrderResponse(BaseModel):
     completed_at: Optional[datetime] = None
     status: OrderStatus
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class OrderDishResponse(BaseModel):
     dish: DishResponse
     quantity: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderDetailResponse(BaseModel):
@@ -25,6 +29,8 @@ class OrderDetailResponse(BaseModel):
     completed_at: Optional[datetime] = None
     status: OrderStatus
     dishes: List[OrderDishResponse]
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderDishLink(BaseModel):

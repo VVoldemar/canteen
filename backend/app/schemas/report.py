@@ -14,6 +14,8 @@ class ReportResponse(BaseModel):
     report_type: str
     generated_at: datetime
     download_url: str
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CostsReportResponse(BaseModel):

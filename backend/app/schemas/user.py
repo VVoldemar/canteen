@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.schemas.annotations import Password
 
@@ -16,6 +16,8 @@ class UserResponse(BaseModel):
     banned: bool
     subscription_start: Optional[datetime] = None
     subscription_days: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateUserRequest(BaseModel):

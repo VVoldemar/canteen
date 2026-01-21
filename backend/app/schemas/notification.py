@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class NotificationResponse(BaseModel):
@@ -10,6 +10,8 @@ class NotificationResponse(BaseModel):
     title: str
     body: str
     read: bool
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateNotificationRequest(BaseModel):
