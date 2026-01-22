@@ -1,14 +1,17 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.core.enums import Measures
 
+from app.schemas.annotations import Name, Price
 
 class IngredientResponse(BaseModel):
     id: int
     name: Name
     price: Price
     measure: Measures
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedIngredientResponse(BaseModel):
@@ -16,6 +19,8 @@ class PaginatedIngredientResponse(BaseModel):
     total: int
     page: int
     pages: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateIngredientRequest(BaseModel):
@@ -35,15 +40,21 @@ class DishResponse(BaseModel):
     name: Name
     price: Price
 
+    model_config = ConfigDict(from_attributes=True)
+
 class PaginatedDishResponse(BaseModel):
     items: List[IngredientResponse]
     total: int
     page: int
     pages: int
 
+    model_config = ConfigDict(from_attributes=True)
+
 class DishIngredientResponse(BaseModel):
     ingredient: IngredientResponse
     amount_thousandth_measure: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DishIngredientLink(BaseModel):
@@ -57,6 +68,8 @@ class DishDetailResponse(BaseModel):
     price: Price
     ingredients: List[DishIngredientResponse]
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class CreateDishRequest(BaseModel):
     name: Name
@@ -67,4 +80,5 @@ class CreateDishRequest(BaseModel):
 class UpdateDishRequest(BaseModel):
     name: Optional[Name] = None
     price: Optional[Price] = None
+
     ingredients: Optional[List[DishIngredientLink]] = None

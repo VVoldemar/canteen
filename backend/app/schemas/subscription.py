@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PurchaseSubscriptionRequest(BaseModel):
@@ -12,3 +12,5 @@ class SubscriptionResponse(BaseModel):
     subscription_days: int
     days_remaining: int
     is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

@@ -18,6 +18,8 @@ class PaymentStatisticsResponse(BaseModel):
     average_order_amount: int
     period: Period
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AttendanceStatisticsByDay(BaseModel):
     date: date
@@ -29,6 +31,7 @@ class AttendanceStatisticsResponse(BaseModel):
     total_served: int
     total_paid: int
     attendance_rate: float
+    
     by_date: List[AttendanceStatisticsByDay]
 
 
@@ -41,3 +44,5 @@ class DishStatistic(BaseModel):
 
 class DishStatisticsResponse(BaseModel):
     dishes: List[DishStatistic]
+
+    model_config = ConfigDict(from_attributes=True)
