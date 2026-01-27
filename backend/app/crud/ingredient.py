@@ -151,4 +151,4 @@ class IngredientCRUD:
                 detail='Failed to delete ingredient'
             )
         
-Ingredients_manager = IngredientCRUD(Ingredient)
+ingredients_manager = IngredientCRUD(Ingredient)
