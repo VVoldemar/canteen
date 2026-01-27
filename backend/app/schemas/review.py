@@ -2,7 +2,7 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 
-from annotations import Rating
+from app.schemas.annotations import Rating
 
 
 class ReviewResponse(BaseModel):

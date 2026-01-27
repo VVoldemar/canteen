@@ -143,4 +143,4 @@ class DishCRUD:
                 detail='Failed to delete dish'
             )
         
-Dish_manager = DishCRUD(Dish)
+dish_manager =DishCRUD(Dish)

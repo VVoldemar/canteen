@@ -14,17 +14,17 @@ async def paginate(
     total_result = await session.execute(count_query)
     total = total_result.scalar() or 0
 
-    offset = (params.page - 1) * params.size
-    paginated_query = query.offset(offset).limit(params.size)
+    offset = (params.page - 1) * params.limit
+    paginated_query = query.offset(offset).limit(params.limit)
     
     result = await session.execute(paginated_query)
     items = result.scalars().all()
 
-    pages = math.ceil(total / params.size) if params.size > 0 else 0
+    pages = math.ceil(total / params.limit) if params.limit > 0 else 0
 
     return PaginatedResponse(
                             items=items,
                             total=total,
                             page=params.page,
                             pages=pages
-                            )
+                        )

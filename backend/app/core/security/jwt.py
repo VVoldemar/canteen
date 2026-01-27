@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from os import getenv
 import uuid
 
-load_dotenv('.env')
 
+load_dotenv('.env')
 
 SECRET_KEY = getenv('JWT_SECRET_KEY')
 ALGORITHM = getenv('JWT_ALGORITHM')
@@ -14,7 +14,6 @@ ACCESS_TTL = getenv('ACCESS_TTL')
 REFRESH_TTL = getenv('REFRESH_TTL')
 
 def create_access_token(user_id: int, role: str):
-    print(ACCESS_TTL, REFRESH_TTL, SECRET_KEY, ALGORITHM)
     payload = {
         "sub": str(user_id),
         "role": role,
