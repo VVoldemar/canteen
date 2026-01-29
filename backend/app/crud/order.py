@@ -116,6 +116,25 @@ class OrderCRUD:
             logger.error(f"Create order error: {e}")
             raise HTTPException(status_code=500, detail="Failed to create order")
 
+    async def cancel_order_receipt(self, session: AsyncSession, order_id: int) -> Order:
+        """Отменить получения заказа без проверки владельца"""
+        order = await self.get_by_id(session, order_id)
+    
+        if order.completed_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Order is not confirmed yet"
+            )
+    
+        if order.status == OrderStatus.CANCELLED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot cancel receipt for cancelled order"
+            )
+        order.completed_at = None
+        await session.commit()
+        return order
+
     async def cancel(self, session: AsyncSession, order_id: int) -> Order:
         """Отмена заказа без проверки владельца."""
         order = await self.get_by_id(session, order_id)
