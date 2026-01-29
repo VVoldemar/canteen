@@ -7,6 +7,8 @@ from app.core.enums import UserRole
 from app.crud.user import users_manager
 from app.api.deps import get_session
 
+from app.schemas.validation import ErrorResponse
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", refreshUrl="/auth/refresh_token")
 
@@ -18,7 +20,8 @@ async def get_current_user(
     payload = decode_token(token)
 
     if payload["type"] != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Wrong token type. Expected 'access', got '{payload['type']}'")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail=f"Wrong token type. Expected 'access', got '{payload['type']}'")
 
     return await users_manager.get_by_id(session, int(payload["sub"]))
 

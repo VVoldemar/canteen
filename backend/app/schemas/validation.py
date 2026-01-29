@@ -3,10 +3,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ErrorResponse(BaseModel):
-    code: str
-    message: str
-    error: Optional[str] = None
-    detail: Optional[str] = None
+    status_code: int
+    detail: Any = None
+    headers: dict[str, str] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
