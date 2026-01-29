@@ -24,29 +24,23 @@ orders_router = APIRouter(prefix='/orders', tags=['Orders'])
                     403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
                 })
 async def get_orders(
-                params: PaginationParams,
-                session: AsyncSession = Depends(get_session), 
-                user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
-                status: Optional[OrderStatus] = None,
-                user_id: Optional[int] = None,
-                date_from: Optional[datetime] = None,
-                date_to: Optional[datetime] = None
-            ):
-    
-    if user.role == UserRole.ADMIN:
-        orders = await orders_manager.get_all_paginated(session=session, 
-                                                        params=params, 
-                                                        user_id=user_id, 
-                                                        order_status=status,
-                                                        date_from=date_from, 
-                                                        date_to=date_to)
-    else:
-        orders = await orders_manager.get_all_paginated(session=session, 
-                                                        params=params,
-                                                        order_status=status,
-                                                        date_from=date_from, 
-                                                        date_to=date_to)
-    
+    params: PaginationParams,
+    session: AsyncSession = Depends(get_session), 
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
+    status: Optional[OrderStatus] = None,
+    user_id: Optional[int] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None
+):
+    orders = await orders_manager.get_all_paginated(
+        session=session, 
+        params=params, 
+        user_id=user_id if user.role == UserRole.ADMIN else None, 
+        order_status=status,
+        date_from=date_from, 
+        date_to=date_to
+    )
+        
     return orders
 
 
@@ -115,7 +109,7 @@ async def mark_seved_order(
     
     return OrderResponse(
         id=order_id,
-        user_id=user.idm,
+        user_id=user.id,
         ordered_at=order.ordered_at,
         completed_at=order.completed_at,
         status=order.status

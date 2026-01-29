@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
-from app.schemas.notification import NotificationResponse, CreateNotificationRequest
+from app.schemas.notification import NotificationResponse
 from app.schemas.validation import ErrorResponse, ValidationError
 from app.api.deps import get_session
 
