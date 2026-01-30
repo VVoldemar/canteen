@@ -97,7 +97,7 @@ async def add_current_user_allergy(
     description="Удалить аллерген из списка",
     response_model=bool,
     responses={
-        204: {"model": bool, "description": "Аллергия удалена"},
+        204: {"description": "Аллергия удалена"},
         401: {"model": ErrorResponse, "description": "Не авторизован"},
         422: {"model": ValidationError, "description": "Ошибка валидации"}
         }

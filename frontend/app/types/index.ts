@@ -1,0 +1,43 @@
+export type OrderStatus = "paid" | "served" | "cancelled";
+
+export type Measure = "Kg" | "L";
+
+export type UserRole = "student" | "cook" | "admin";
+
+export interface User {
+    id: number;
+    name: string;
+    surname: string;
+    patronymic?: string;
+    email: string;
+    role: UserRole;
+    balance: number;
+    is_active: boolean;
+    allergies: Ingredient[];
+}
+
+export interface Ingredient {
+    id: number;
+    name: string;
+    price: number;
+    measure: Measure;
+}
+
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
+
+export interface RegisterRequest {
+    name: string;
+    surname: string;
+    patronymic?: string;
+    email: string;
+    password: string;
+}
+
+export interface TokenResponse {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+}

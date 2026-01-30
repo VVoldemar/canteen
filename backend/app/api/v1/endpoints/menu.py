@@ -96,7 +96,7 @@ async def update_menu(
         description='Доступно только администраторам',
         response_model=MenuResponse,
         responses={
-            204: {"model": MenuResponse},
+            204: {"description": "Меню удалено"},
             401: {"model": ErrorResponse, "description": "Не авторизован"},
             403: {"model": ErrorResponse, "description": "Доступ запрещен"},
             404: {"model": ErrorResponse, "description": "Меню не найдено"}
