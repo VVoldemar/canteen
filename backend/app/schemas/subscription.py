@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class PurchaseSubscriptionRequest(BaseModel):
-    days: int = Field(ge=0)
+    days: int = Field(gt=0)
 
 
 class SubscriptionResponse(BaseModel):

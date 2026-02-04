@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from typing import Annotated
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
@@ -18,14 +19,14 @@ ingredients_router = APIRouter(prefix='/ingredients', tags=['Ingredients'])
     '/', 
     summary='Получить список ингредиентов', 
     description='',
-    response_model=PaginatedResponse,
+    response_model=PaginatedResponse[IngredientResponse],
     responses={
         200: {'model': PaginatedResponse,'description': 'Список ингредиентов'},
         401: {'model': ErrorResponse,'description': 'Не авторизован'}
         }
     )
 async def get_ingredients(
-    params: PaginationParams = Depends(),
+    params: Annotated[PaginationParams, Depends()],
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession = Depends(get_session)
     ):
@@ -36,6 +37,7 @@ async def get_ingredients(
         summary='Добавить ингредиент', 
         description='Доступно только администраторам и поварам',
         response_model=IngredientResponse,
+        status_code=status.HTTP_201_CREATED,
         responses={
             201: {'model': IngredientResponse, 'description': 'Ингредиент успешно создан'},
             400: {'model': ErrorResponse, 'description': 'Ингредиент уже существует'},
@@ -45,7 +47,7 @@ async def get_ingredients(
         }
     )
 async def add_ingredient(
-    ingredient_data: UpdateIngredientRequest = Depends(),
+    ingredient_data: UpdateIngredientRequest,
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
     session: AsyncSession = Depends(get_session)
     ):
@@ -84,10 +86,10 @@ async def get_ingredient(
             404: {'model': ErrorResponse, 'description': 'Ингредиент не найден'},
             422: {'model': ValidationError, 'description': 'Ошибка валидации данных'},
         }
-    )
+    )   
 async def update_ingredient(
     ingredient_id: int, 
-    ingredient_data: UpdateIngredientRequest = Depends(),
+    ingredient_data: UpdateIngredientRequest,
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
     session: AsyncSession = Depends(get_session)
     ):
@@ -98,7 +100,7 @@ async def update_ingredient(
     '/{ingredient_id}', 
     summary='Удалить ингредиент', 
     description='Доступно только администраторам',
-    response_model=IngredientResponse,
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Ингредиент успешно удален'},
         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
@@ -111,4 +113,6 @@ async def delete_ingredient(
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):
-    return await ingredients_manager.delete(session, ingredient_id)
+    await ingredients_manager.delete(session, ingredient_id)
+    return 
+    

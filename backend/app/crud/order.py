@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class OrderCRUD:
     def __init__(self, model):
-        self.model = model
+        self.model: Order = model
 
     async def get_by_id(self, session: AsyncSession, order_id: int) -> Order:
         """Получить заказ по ID с информацией о блюдах."""
@@ -52,7 +52,11 @@ class OrderCRUD:
         Получить список заказов с пагинацией и фильтрами.
         user_id здесь работает просто как фильтр, а не как проверка доступа.
         """
-        query = select(self.model).order_by(self.model.ordered_at.desc())
+        query = select(
+            self.model
+            ).options(
+                selectinload(self.model.dishes).selectinload(OrderItem.dish),
+            ).order_by(self.model.ordered_at.desc())
 
         if user_id:
             query = query.where(self.model.user_id == user_id)
@@ -170,5 +174,16 @@ class OrderCRUD:
         order.completed_at = datetime.now()
         await session.commit()
         return order
+    
+
+    async def serve_receipt(self, session:AsyncSession, order_id: int) -> Order:
+        order = await self.get_by_id(session, order_id)
+        
+        if order.completed_at is not None:
+            order.status = OrderStatus.PAID
+            await session.commit()
+            return order
+        else:
+            raise HTTPException(status.HTTP_409_CONFLICT)
 
 orders_manager = OrderCRUD(Order)
