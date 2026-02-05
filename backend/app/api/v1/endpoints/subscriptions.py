@@ -8,7 +8,7 @@ from app.crud.user import users_manager
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.subscription import SubscriptionResponse, PurchaseSubscriptionRequest
-from app.schemas.validation import ErrorResponse
+from app.schemas.validation import ErrorResponse, ValidationError
 
 
 subscriptions_router = APIRouter(prefix='/subscriptions', tags=['Subscriptions'])
@@ -34,6 +34,7 @@ async def get_my_subscriptions(
                             200: {'model': SubscriptionResponse, 'description': 'Абонемент успешно приобретен'},
                             400: {'description': 'Недостаточно средств или ошибка в запросе'},
                             401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+                            422: {'model': ValidationError, 'description': "Обшибка валидации"}
                         })
 async def purchase_subscriptions(
                         subscription_data: PurchaseSubscriptionRequest,

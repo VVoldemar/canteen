@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
 
-from app.schemas.menu import MenuResponse, CreateMenuRequest, UpdateMenuRequest
+from app.schemas.menu import MenuResponse, CreateMenuRequest, UpdateMenuRequest, MenuDetailResponse
 from app.schemas.validation import ValidationError, ErrorResponse
 
 from app.db.session import AsyncSession
@@ -34,7 +34,7 @@ async def get_menus(
         description='Доступно только администраторам',
         response_model=MenuResponse,
         responses={
-            201: {"model": MenuResponse, "description": "Меню успешно создано"},
+            200: {"model": MenuResponse, "description": "Меню успешно создано"},
             400: {"model": ErrorResponse, "description": "Некорректные данные"},
             401: {"model": ErrorResponse, "description": "Не авторизован"},
             403: {"model": ErrorResponse, "description": "Доступ запрещен"},
@@ -42,21 +42,20 @@ async def get_menus(
         }
     )
 async def create_menu(
-    menu_params: CreateMenuRequest = Depends(),
+    menu_params: CreateMenuRequest,
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):
-    new_menu = await menu_manager.create(session, menu_params)
-    return new_menu
+    return await menu_manager.create(session, menu_params)
 
 
 @menu_router.get(
         '/{menu_id}', 
         summary='Получить меню по ID', 
         description='Получить детальную информацию о меню с блюдами',
-        response_model=MenuResponse,
+        response_model=MenuDetailResponse,
         responses={
-            200: {"model": MenuResponse},
+            200: {"model": MenuDetailResponse},
             404: {"model": ErrorResponse, "description": "Ресурс не найден"}
         }
     )
@@ -71,9 +70,9 @@ async def get_menu(
     '/{menu_id}', 
     summary='Обновить меню', 
     description='Доступно только администраторам',
-    response_model=MenuResponse,
+    response_model=MenuDetailResponse,
     responses={
-        200: {"model": MenuResponse},
+        200: {"model": MenuDetailResponse},
         400: {"model": ErrorResponse, "description": "Некорректные данные"},
         401: {"model": ErrorResponse, "description": "Не авторизован"},
         403: {"model": ErrorResponse, "description": "Доступ запрещен"},
@@ -82,8 +81,8 @@ async def get_menu(
         }
     )
 async def update_menu(
+    update_data: UpdateMenuRequest,
     menu_id : int, 
-    update_data: UpdateMenuRequest = Depends(),
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):
@@ -94,7 +93,6 @@ async def update_menu(
         '/{menu_id}', 
         summary='Удалить меню', 
         description='Доступно только администраторам',
-        response_model=MenuResponse,
         responses={
             204: {"description": "Меню удалено"},
             401: {"model": ErrorResponse, "description": "Не авторизован"},
@@ -107,4 +105,5 @@ async def delete_menu(
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):
-    return await menu_manager.delete(session, menu_id)
+    await menu_manager.delete(session, menu_id)
+    raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)

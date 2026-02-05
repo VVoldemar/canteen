@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 import logging
 from typing import Optional
@@ -8,6 +9,7 @@ from typing import Optional
 from app.crud.paginating import paginate
 from app.schemas.paginating import PaginationParams, PaginatedResponse
 from app.models.dish import Dish
+from app.models.associations import DishIngredient
 from app.schemas.dish import (
     DishResponse,
     CreateDishRequest,
@@ -22,7 +24,14 @@ class DishCRUD:
     
     async def get_by_id(self, session: AsyncSession, id: int) -> Dish:
         """Get a dish by ID."""
-        stmt = select(self.model).where(self.model.id == id)
+        stmt = (
+        select(self.model)
+        .options(
+            selectinload(self.model.ingredients) 
+            .selectinload(DishIngredient.ingredient) 
+        )
+        .where(self.model.id == id)
+    )
         result = await session.execute(stmt)
         dish = result.scalar_one_or_none()
         
@@ -61,10 +70,20 @@ class DishCRUD:
             db_dish = self.model(
                 name=new_dish.name,
                 price=new_dish.price,
-                ingredients=new_dish.ingredients
             )
             
             session.add(db_dish)
+            
+            await session.flush() 
+
+            for ing_data in new_dish.ingredients:
+                new_relation = DishIngredient(
+                    dish_id=db_dish.id,
+                    ingredient_id=ing_data.ingredient_id,
+                    amount_thousandth_measure=ing_data.amount_thousandth_measure
+                )
+                session.add(new_relation)
+                
             await session.commit()
             await session.refresh(db_dish)
             return db_dish

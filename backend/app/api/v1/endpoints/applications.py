@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import Optional, Annotated
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
@@ -16,15 +16,15 @@ from app.core.enums import OrderStatus
 applications_router = APIRouter(prefix='/applications', tags=['Applications'])
 
 @applications_router.get('/', summary='Получить список заявок на закупку', description='Доступно поварам и администраторам',
-                        response_model=PaginatedResponse,
+                        response_model=PaginatedResponse[ApplicationResponse],
                         responses={
-                            201: {'model': PaginatedResponse, 'description': 'Список заявок'},
+                            201: {'model': PaginatedResponse[ApplicationResponse], 'description': 'Список заявок'},
                             400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                             401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                             403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                         })
 async def get_applications(
-                        params: Optional[PaginationParams] = None,
+                        params: Annotated[PaginationParams, Depends()],
                         status: Optional[OrderStatus] = None, 
                         user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
                         session: AsyncSession = Depends(get_session)
@@ -33,10 +33,12 @@ async def get_applications(
     return await applications_manager.get_all_paginated(session, params, status)
 
 
-@applications_router.post('/', summary='Создать заявку на закупку', description='Повар создает заявку на закупку продуктов',
-                        response_model=ApplicationResponse,
+@applications_router.post(
+                        '/', summary='Создать заявку на закупку', 
+                        description='Повар создает заявку на закупку продуктов',
+                        status_code=status.HTTP_201_CREATED,
                         responses={
-                            200: {'model': ApplicationResponse, 'description': 'Заявка создана'},
+                            201: {'model': ApplicationResponse, 'description': 'Заявка создана'},
                             400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                             401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                             403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},

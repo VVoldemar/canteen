@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Body
 from datetime import datetime
 
 from app.core.security.jwt import create_access_token, create_refresh_token, decode_token
@@ -58,7 +58,15 @@ async def login_user(
                     session: AsyncSession = Depends(get_session)
                 ):
     
-    user = await users_manager.get_by_email(session, form.email)
+    try:
+        user = await users_manager.get_by_email(session, form.email)
+    except HTTPException as e:
+        if e.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, 
+                detail="Invalid email or password" 
+            )
+        raise e 
 
     if not verify_password(form.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong password")
@@ -112,7 +120,7 @@ async def refresh_token(
                     401: {'model': ErrorResponse, 'desctiprion': 'Не авторизован или неверный токен'},
                 })
 async def logout_user(
-                    refresh_token: str, 
+                    refresh_token: str = Body(embed=True), 
                     session: AsyncSession = Depends(get_session)
                 ):
 

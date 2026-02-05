@@ -35,7 +35,7 @@ class UserCRUD:
         """
         Возвращает ORM модель.
         """
-        stmt = select(self.model).where(self.model.email == email)
+        stmt = select(self.model).where(self.model.email==email)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
         
@@ -258,5 +258,6 @@ class UserCRUD:
         user.banned = not user.banned
         await session.commit()
         return user.banned
+
 
 users_manager = UserCRUD(User)

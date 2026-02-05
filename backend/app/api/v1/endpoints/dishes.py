@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Query
 
+from typing import Annotated, Optional
+ 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
 
@@ -14,22 +16,24 @@ from app.schemas.paginating import PaginationParams, PaginatedResponse
 dishes_router = APIRouter(prefix='/dishes', tags=['Dishes'])
 
 @dishes_router.get('/', summary='Получить список блюд', description='',
-                response_model=PaginatedResponse,
+                response_model=PaginatedResponse[DishResponse],
                 responses={
-                    200: {'model': PaginatedResponse, 'description': 'Список блюд'}
+                    200: {'model': PaginatedResponse[DishResponse], 'description': 'Список блюд'}
                 })
 async def get_dishes(
-                params: PaginationParams,
-                session: AsyncSession = Depends(get_session)
+                params: Annotated[PaginationParams, Depends()],
+                search: Annotated[Optional[str], Query(description="Поиск по названию блюда")] = None,
+                session: AsyncSession = Depends(get_session),
             ):
 
-    return await dish_manager.get_all_paginated(session, params)
+    return await dish_manager.get_all_paginated(session, params, search)
 
 
 @dishes_router.post('/', summary='Создать новое блюдо', description='',
                     response_model=DishResponse,
+                    status_code=status.HTTP_201_CREATED,
                     responses={
-                        200: {'model': DishResponse, 'description': 'Блюдо создано'},
+                        201: {'model': DishResponse, 'description': 'Блюдо создано'},
                         400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
@@ -52,7 +56,7 @@ async def create_dish(
 @dishes_router.get('/{dish_id}', summary='Получить информацию о блюде', description='',
                     response_model=DishDetailResponse,
                     responses={
-                        200: {'model': DishResponse, 'description': 'Информация о блюде'},
+                        200: {'model': DishDetailResponse, 'description': 'Информация о блюде'},
                         404: {'model': ErrorResponse, 'description': 'Ресурс не найден'},
                     })
 async def get_dish(
@@ -64,9 +68,9 @@ async def get_dish(
 
 
 @dishes_router.patch('/{dish_id}', summary='Oбновить блюдо', description='Доступно только администраторам и поварам',
-                    response_model=DishResponse,
+                    response_model=DishDetailResponse,
                     responses={
-                        200: {'model': DishResponse, 'description': 'Блюдо обновлено'},
+                        200: {'model': DishDetailResponse, 'description': 'Блюдо обновлено'},
                         400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
@@ -83,8 +87,9 @@ async def update_dish(
 
 
 @dishes_router.delete('/{dish_id}', summary='Удалить блюдо', description='Доступно только администраторам',
+                    status_code=status.HTTP_204_NO_CONTENT,
                     responses={
-                        200: {'description': 'Блюдо удалено'},
+                        204: {'description': 'Блюдо удалено'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
                         404: {'model': ErrorResponse, 'description': 'Ресурс не найден'}
@@ -96,4 +101,4 @@ async def delete_dish(
                 ):
     
     delete_dish_status = await dish_manager.delete(session, dish_id)
-    return {'status': delete_dish_status}
+    return 

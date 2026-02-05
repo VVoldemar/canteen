@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from typing import List
+from fastapi import APIRouter, Depends, Body, HTTPException, status
+from typing import List, Annotated, Optional
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
@@ -43,7 +43,7 @@ async def get_current_user(
         }
     )
 async def update_current_user(
-    update_data: UpdateUserRequest = Depends(),
+    update_data: UpdateUserRequest,
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession = Depends(get_session)
     ):
@@ -57,7 +57,7 @@ async def update_current_user(
     "/me/allergies",
     summary="Получить список аллергий текущего пользователя", 
     description="",
-    response_model=UserResponse,
+    response_model=List[IngredientResponse],
     responses={
         200: {"model": List[IngredientResponse]},
         401: {"model": ErrorResponse, "description": "Не авторизован"}
@@ -76,7 +76,7 @@ async def get_current_user_allergies(
     summary="Добавить аллергию", 
     description="Указать аллерген для текущего пользователя",
     responses={
-        200: {"model": bool, "description": "Аллергия добавлена"},
+        201: { "description": "Аллергия добавлена"},
         400: {"model": ErrorResponse, "description": "Некорректный запрос"},
         401: {"model": ErrorResponse, "description": "Не авторизован"},
         404: {"model": ErrorResponse, "description": "Ингредиент не найден"},
@@ -84,18 +84,19 @@ async def get_current_user_allergies(
         }
     )
 async def add_current_user_allergy(
-    ingredient_id: int,
+    ingredient_id: int = Body(embed=True),
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession = Depends(get_session)
     ):
     await users_manager.add_allergy(session, user.id, ingredient_id)
 
+    raise HTTPException(status_code=status.HTTP_201_CREATED)
+    
 
 @users_router.delete(
     "/me/allergies", 
     summary="Удалить аллергию", 
     description="Удалить аллерген из списка",
-    response_model=bool,
     responses={
         204: {"description": "Аллергия удалена"},
         401: {"model": ErrorResponse, "description": "Не авторизован"},
@@ -104,10 +105,11 @@ async def add_current_user_allergy(
     )
 async def delete_current_user_allergy(
     ingredient_id: int,
-    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT))
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
+    session: AsyncSession = Depends(get_session)
     ):
-    await users_manager.delete_allergy(user.id, ingredient_id)
-    
+    await users_manager.remove_allergy(session, user.id, ingredient_id)
+    raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
 
 @users_router.get(
     "/",
@@ -121,18 +123,12 @@ async def delete_current_user_allergy(
     }
 )
 async def get_users(
-    params: PaginationParams = Depends(),
+    params: Annotated[PaginationParams, Depends()],
+    role: Optional[str] = None,
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):  
-    page = await users_manager.get_users(session, params)
-    list_users = []
-    for item in page.items:
-        list_users.append(
-            UserResponse(item
-            )
-        )
-    return PaginatedResponse[UserResponse](items=list_users, total=page.total, page=page.page, pages=page.pages)
+    return await users_manager.get_all_paginated(session, params, role)
 
 
 @users_router.get(
@@ -152,8 +148,7 @@ async def get_user(
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):  
-    user = await users_manager.get_user(session, user_id)
-    return user
+    return await users_manager.get_by_id(session, user_id)
 
 
 @users_router.patch(
@@ -171,8 +166,8 @@ async def get_user(
     )
 async def update_user(
     user_id: int,
-    update_data: AdminUpdateUserRequest = Depends(),
+    update_data: AdminUpdateUserRequest,
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ): 
-    return await users_manager.update_user(session, user_id, update_data)
+    return await users_manager.update(session, user_id, update_data)
