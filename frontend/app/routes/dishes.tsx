@@ -90,7 +90,7 @@ export default function DishesPage() {
     if (ingredients.length > 0) return;
     setIngredientsLoading(true);
     try {
-      const response = await getIngredients({ page: 1, limit: 200 });
+      const response = await getIngredients({ page: 1, limit: 100 });
       setIngredients(response.items);
     } catch (error) {
       if (error instanceof ApiException) {

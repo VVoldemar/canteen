@@ -16,11 +16,12 @@ export interface GetDishesParams {
 export async function getDishes(
   params: GetDishesParams = {},
 ): Promise<PaginatedResponse<Dish>> {
+  const limit = Math.min(params.limit ?? 20, 100);
   const response = await apiClient.get<PaginatedResponse<Dish>>("/dishes", {
     params: {
       search: params.search,
       page: params.page ?? 1,
-      limit: params.limit ?? 20,
+      limit,
     },
   });
   return response.data;

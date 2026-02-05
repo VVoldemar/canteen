@@ -70,7 +70,7 @@ export default function MenuPage() {
     if (dishes.length > 0) return;
     setDishesLoading(true);
     try {
-      const response = await getDishes({ page: 1, limit: 200 });
+      const response = await getDishes({ page: 1, limit: 100 });
       setDishes(response.items);
     } catch (error) {
       if (error instanceof ApiException) {

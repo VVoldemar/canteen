@@ -15,13 +15,14 @@ export interface GetIngredientsParams {
 export async function getIngredients(
   params: GetIngredientsParams = {},
 ): Promise<PaginatedResponse<Ingredient>> {
+  const limit = Math.min(params.limit ?? 50, 100);
   const response = await apiClient.get<PaginatedResponse<Ingredient>>(
     "/ingredients",
     {
       params: {
         search: params.search,
         page: params.page || 1,
-        limit: params.limit || 50,
+        limit,
       },
     },
   );
