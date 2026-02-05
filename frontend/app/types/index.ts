@@ -120,6 +120,66 @@ export interface CreateOrderRequest {
   dishes: OrderDishLink[];
 }
 
+export interface Review {
+  id: number;
+  user_id: number;
+  dish_id: number;
+  rating?: number | null;
+  content?: string | null;
+  datetime: string;
+}
+
+export interface CreateReviewRequest {
+  rating?: number | null;
+  content: string;
+}
+
+export interface UpdateReviewRequest {
+  rating?: number | null;
+  content?: string | null;
+}
+
+export interface Application {
+  id: number;
+  user_id: number;
+  datetime: string;
+  status: OrderStatus;
+}
+
+export interface ApplicationProduct {
+  ingredient: Ingredient;
+  quantity: number;
+}
+
+export interface ApplicationDetail extends Application {
+  products: ApplicationProduct[];
+}
+
+export interface ApplicationProductLink {
+  ingredient_id: number;
+  quantity: number;
+}
+
+export interface CreateApplicationRequest {
+  products: ApplicationProductLink[];
+}
+
+export interface ApplicationRejectRequest {
+  reason: string;
+}
+
+export interface Subscription {
+  user_id: number;
+  subscription_start: string;
+  subscription_days: number;
+  days_remaining: number;
+  is_active: boolean;
+}
+
+export interface PurchaseSubscriptionRequest {
+  days: number;
+}
+
 export interface CreateDishRequest {
   name: string;
   price: number;
