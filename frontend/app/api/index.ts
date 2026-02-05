@@ -34,3 +34,18 @@ export {
   updateDish,
   deleteDish,
 } from "./dishes";
+export {
+  getMenus,
+  getMenu,
+  createMenu,
+  updateMenu,
+  deleteMenu,
+} from "./menu";
+export {
+  getOrders,
+  getOrder,
+  createOrder,
+  cancelOrder,
+  confirmOrderReceipt,
+  serveOrder,
+} from "./orders";

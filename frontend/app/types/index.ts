@@ -75,6 +75,51 @@ export interface DishIngredientLink {
   amount_thousandth_measure: number;
 }
 
+export interface Menu {
+  id: number;
+  name: string;
+}
+
+export interface MenuDetail extends Menu {
+  items: Dish[];
+}
+
+export interface CreateMenuRequest {
+  name: string;
+  dish_ids?: number[];
+}
+
+export interface UpdateMenuRequest {
+  name?: string;
+  dish_ids?: number[];
+}
+
+export interface Order {
+  id: number;
+  user_id: number;
+  ordered_at: string;
+  completed_at?: string | null;
+  status: OrderStatus;
+}
+
+export interface OrderDish {
+  dish: Dish;
+  quantity: number;
+}
+
+export interface OrderDetail extends Order {
+  dishes: OrderDish[];
+}
+
+export interface OrderDishLink {
+  dish_id: number;
+  quantity: number;
+}
+
+export interface CreateOrderRequest {
+  dishes: OrderDishLink[];
+}
+
 export interface CreateDishRequest {
   name: string;
   price: number;
