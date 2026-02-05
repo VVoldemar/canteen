@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
@@ -23,8 +24,8 @@ reports_router = APIRouter(prefix='/reports', tags=['Reports'])
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def report_costs(
-                    date_from: datetime,
-                    date_to: datetime,
+                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
+                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -40,8 +41,8 @@ async def report_costs(
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def report_nutrition(
-                    date_from: datetime,
-                    date_to: datetime,
+                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
+                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):

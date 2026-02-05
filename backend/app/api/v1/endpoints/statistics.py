@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from datetime import datetime
+from fastapi import APIRouter, Depends, status
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from app.core.security.auth import require_roles
@@ -24,8 +24,8 @@ statistics_router = APIRouter(tags=['Statistics'])
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def get_payments(
-                    date_from: Optional[datetime] = None,
-                    date_to: Optional[datetime] = None,
+                    date_from: Optional[datetime] = datetime.now(timezone.utc).date() - timedelta(days=7),
+                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -41,8 +41,8 @@ async def get_payments(
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def get_attendance(                    
-                    date_from: Optional[datetime] = None,
-                    date_to: Optional[datetime] = None,
+                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
+                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -58,8 +58,8 @@ async def get_attendance(
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def get_dishes_stat(
-                    date_from: Optional[datetime] = None,
-                    date_to: Optional[datetime] = None,
+                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
+                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -69,8 +69,9 @@ async def get_dishes_stat(
 
 @statistics_router.post('/reports/generate', summary='Сформировать отчет', description='Aдминистратор формирует отчет по питанию и затратам',
                     response_model=ReportResponse,
+                    status_code=status.HTTP_201_CREATED,
                     responses={
-                        200: {'model': ReportResponse, 'description': 'Отчет сформирован'},
+                        201: {'model': ReportResponse, 'description': 'Отчет сформирован'},
                         400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
