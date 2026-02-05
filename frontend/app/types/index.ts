@@ -43,6 +43,50 @@ export interface Ingredient {
   measure: Measure;
 }
 
+export interface CreateIngredientRequest {
+  name: string;
+  price: number;
+  measure: Measure;
+}
+
+export interface UpdateIngredientRequest {
+  name?: string;
+  price?: number;
+  measure?: Measure;
+}
+
+export interface Dish {
+  id: number;
+  name: string;
+  price: number;
+}
+
+export interface DishIngredient {
+  ingredient: Ingredient;
+  amount_thousandth_measure: number;
+}
+
+export interface DishDetail extends Dish {
+  ingredients: DishIngredient[];
+}
+
+export interface DishIngredientLink {
+  ingredient_id: number;
+  amount_thousandth_measure: number;
+}
+
+export interface CreateDishRequest {
+  name: string;
+  price: number;
+  ingredients: DishIngredientLink[];
+}
+
+export interface UpdateDishRequest {
+  name?: string;
+  price?: number;
+  ingredients?: DishIngredientLink[];
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

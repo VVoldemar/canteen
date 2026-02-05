@@ -1,4 +1,9 @@
-import type { Ingredient, PaginatedResponse } from "~/types";
+import type {
+  CreateIngredientRequest,
+  Ingredient,
+  PaginatedResponse,
+  UpdateIngredientRequest,
+} from "~/types";
 import apiClient from "./client";
 
 export interface GetIngredientsParams {
@@ -26,4 +31,26 @@ export async function getIngredients(
 export async function getIngredient(id: number): Promise<Ingredient> {
   const response = await apiClient.get<Ingredient>(`/ingredients/${id}`);
   return response.data;
+}
+
+export async function createIngredient(
+  data: CreateIngredientRequest,
+): Promise<Ingredient> {
+  const response = await apiClient.post<Ingredient>("/ingredients", data);
+  return response.data;
+}
+
+export async function updateIngredient(
+  id: number,
+  data: UpdateIngredientRequest,
+): Promise<Ingredient> {
+  const response = await apiClient.patch<Ingredient>(
+    `/ingredients/${id}`,
+    data,
+  );
+  return response.data;
+}
+
+export async function deleteIngredient(id: number): Promise<void> {
+  await apiClient.delete(`/ingredients/${id}`);
 }

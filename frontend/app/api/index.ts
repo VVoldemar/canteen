@@ -20,4 +20,17 @@ export {
   addAllergy,
   removeAllergy,
 } from "./users";
-export { getIngredients, getIngredient } from "./ingredients";
+export {
+  getIngredients,
+  getIngredient,
+  createIngredient,
+  updateIngredient,
+  deleteIngredient,
+} from "./ingredients";
+export {
+  getDishes,
+  getDish,
+  createDish,
+  updateDish,
+  deleteDish,
+} from "./dishes";
