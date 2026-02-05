@@ -14,15 +14,6 @@ class IngredientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PaginatedIngredientResponse(BaseModel):
-    items: List[IngredientResponse]
-    total: int
-    page: int
-    pages: int
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class CreateIngredientRequest(BaseModel):
     name: Name
     price: int = Field(ge=0)
@@ -42,13 +33,6 @@ class DishResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class PaginatedDishResponse(BaseModel):
-    items: List[IngredientResponse]
-    total: int
-    page: int
-    pages: int
-
-    model_config = ConfigDict(from_attributes=True)
 
 class DishIngredientResponse(BaseModel):
     ingredient: IngredientResponse

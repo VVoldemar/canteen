@@ -21,7 +21,7 @@ class MenuDetailResponse(BaseModel):
 
 class CreateMenuRequest(BaseModel):
     name: Name
-    dish_ids: List[int]
+    dish_ids: Optional[List[int]] = None
 
 
 class UpdateMenuRequest(BaseModel):

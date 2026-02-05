@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Optional
+from typing import Optional, Annotated
 from datetime import datetime
 
 from app.core.security.auth import require_roles
@@ -17,14 +17,14 @@ from app.schemas.order import OrderResponse, OrderDetailResponse, CreateOrderReq
 orders_router = APIRouter(prefix='/orders', tags=['Orders'])
 
 @orders_router.get('/', summary='Получить список заказов', description='- Ученики видят только свои заказы\n - Повара и администраторы видят все заказы',
-                response_model=PaginatedResponse,
+                response_model=PaginatedResponse[OrderResponse],
                 responses={
-                    200: {'model': PaginatedResponse, 'description': 'Список заказов'},
+                    200: {'model': PaginatedResponse[OrderResponse], 'description': 'Список заказов'},
                     401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                     403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
                 })
 async def get_orders(
-    params: PaginationParams,
+    params: Annotated[PaginationParams, Depends()],
     session: AsyncSession = Depends(get_session), 
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     status: Optional[OrderStatus] = None,
@@ -32,21 +32,17 @@ async def get_orders(
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None
 ):
-    orders = await orders_manager.get_all_paginated(
-        session=session, 
-        params=params, 
-        user_id=user_id if user.role == UserRole.ADMIN else None, 
-        order_status=status,
-        date_from=date_from, 
-        date_to=date_to
-    )
-        
-    return orders
+    if user.role == UserRole.STUDENT:
+        user_id = user.id
+    
+    return await orders_manager.get_all_paginated(session, params, user_id, status, date_from, date_to)
 
 
 @orders_router.post('/', summary='Создать заказ', description='Оплата разового питания учеником', 
-                    response_model=OrderResponse,
+                    response_model=OrderDetailResponse,
+                    status_code=status.HTTP_201_CREATED,
                     responses={
+                        201: {'model': OrderDetailResponse},
                         400: {'model': ErrorResponse, 'description': 'Недостаточно средств или некорректный запрос'},
                         409: {'model': ErrorResponse, 'description': 'Конфликт (операция недоступна в текущем состоянии)'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
@@ -87,7 +83,6 @@ async def get_order(
                     response_model=OrderResponse,
                     responses={
                         200: {'model': OrderResponse, 'description': 'Питание отмечено как полученное'},
-                        400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
                         404: {'model': ErrorResponse, 'description': 'Ресурс не найден'},
@@ -99,21 +94,7 @@ async def mark_seved_order(
                         session: AsyncSession = Depends(get_session)
                     ):
     
-    try:
-        order = await orders_manager.mark_served(session, order_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Bad request'
-        )
-    
-    return OrderResponse(
-        id=order_id,
-        user_id=user.id,
-        ordered_at=order.ordered_at,
-        completed_at=order.completed_at,
-        status=order.status
-    )
+    return await orders_manager.mark_served(session, order_id)
 
 
 @orders_router.post('/{order_id}/cancel', summary='Отменить заказ', description='Отмена заказа (доступно только до момента выдачи)',
@@ -132,13 +113,7 @@ async def cancel_order(
                     session: AsyncSession = Depends(get_session)
                 ):
     
-    try:
-        return await orders_manager.cancel(session, order_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Bad request'
-        )
+    return await orders_manager.cancel(session, order_id)
 
 
 @orders_router.post('/{order_id}/confirm-receipt', summary='Подтвердить получение питания', description='Ученик подтверждает получение питания. Повторная отметка должна приводить к 409.',
@@ -155,13 +130,8 @@ async def confirm_order(
                     user=Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT)),
                     session: AsyncSession = Depends(get_session)
                 ):
-    try:
-        return await orders_manager.confirm_receipt(session, order_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Bad request'
-        )
+    
+    return await orders_manager.confirm_receipt(session, order_id)
 
 
 @orders_router.post('/{order_id}/serve', summary='Отметить заказ как выданный', description='Повар отмечает заказ как выданный.',
@@ -178,10 +148,4 @@ async def serve_order(
                     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
                     session: AsyncSession = Depends(get_session)
                 ):
-    try:
-        return orders_manager.serve(session, order_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Bad request'
-        )
+        return await orders_manager.serve_receipt(session, order_id)

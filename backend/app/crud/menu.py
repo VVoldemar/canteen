@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 import logging
 
@@ -15,17 +16,30 @@ class MenuCRUD:
     def __init__(self, model):
         self.model = model
     
+
+    async def get_all(self, session: AsyncSession) -> Menu:
+        stmt = select(self.model)
+        result = await session.execute(stmt)
+        return result.scalars()
+    
     async def get_by_id(self, session: AsyncSession, id: int) -> Menu:
-        """Get a menu by ID."""
-        stmt = select(self.model).where(self.model.id == id)
+        """Get a menu by ID with items preloaded."""
+        
+        stmt = (
+            select(self.model)
+            .options(selectinload(self.model.items))
+            .where(self.model.id == id)
+        )
+
         result = await session.execute(stmt)
         menu = result.scalar_one_or_none()
-        
+
         if not menu:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Menu not found"
             )
+
         return menu
     
     async def get_all_paginated(
@@ -40,18 +54,23 @@ class MenuCRUD:
     async def create(self, session: AsyncSession, new_menu: CreateMenuRequest) -> Menu:
         """Create a new menu."""
         try:
-            stmt = select(self.model).where(self.model.name == new_menu.name)
+            new_menu = new_menu.model_dump(exclude_unset=True, exclude_none=True)
+            
+            stmt = select(self.model).where(self.model.name == new_menu["name"])
             if (await session.execute(stmt)).scalar_one_or_none():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Menu already exists"
                 )
-            
-            db_menu = self.model(
-                name=new_menu.name,
-                dish_ids=new_menu.dish_ids
-            )
-            
+            if "dish_ids" in new_menu.keys():
+                db_menu = self.model(
+                    name=new_menu["name"],
+                    items=new_menu["dish_ids"]
+                )
+            else:
+                db_menu = self.model(
+                    name=new_menu["name"],
+                )
             session.add(db_menu)
             await session.commit()
             await session.refresh(db_menu)

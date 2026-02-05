@@ -1,11 +1,11 @@
-from typing import Generic, TypeVar, List
+from typing import Generic, TypeVar, List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 T = TypeVar("T")
 
 class PaginationParams(BaseModel):
-    page: int = Field(1, ge=1, description="Номер страницы")
-    limit: int = Field(10, ge=1, le=100, description="Количество элементов на странице")
+    page: Optional[int] = Field(1, ge=1, description="Номер страницы")
+    limit: Optional[int] = Field(10, ge=1, le=100, description="Количество элементов на странице")
 
 
 class PaginatedResponse(BaseModel, Generic[T]):

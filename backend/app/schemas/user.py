@@ -2,13 +2,13 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.annotations import Password
+from app.schemas.annotations import Password, Name
 
 from app.core.enums import UserRole
 
 class UserResponse(BaseModel):
     id: int
-    name: str
+    name: Name
     surname: str
     patronymic: Optional[str] = None
     role: UserRole
@@ -21,10 +21,10 @@ class UserResponse(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    name: str
-    surname: str
+    name: Optional[Name] = None
+    surname: Optional[str] = None
     patronymic: Optional[str] = None
-    password: Password
+    password: Optional[Password] = None
 
 
 class AdminUpdateUserRequest(BaseModel):

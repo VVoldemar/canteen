@@ -8,6 +8,7 @@ from app.schemas.annotations import Rating
 class ReviewResponse(BaseModel):
     id: int
     user_id: int
+    dish_id: int
     rating: Optional[Rating] = None
     content: Optional[str] = None
     datetime: datetime
@@ -16,7 +17,7 @@ class ReviewResponse(BaseModel):
 
 
 class CreateReviewRequest(BaseModel):
-    rating: Rating = None
+    rating: Optional[Rating] = None
     content: str 
 
 
