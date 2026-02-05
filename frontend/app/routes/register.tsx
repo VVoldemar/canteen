@@ -4,7 +4,7 @@ import { UserOutlined, LockOutlined, IdcardOutlined } from "@ant-design/icons";
 import { useNavigate, Link } from "react-router";
 import type { Route } from "./+types/register";
 import type { RegisterRequest } from "~/types";
-import { register, login, getCurrentUser } from "~/api/auth";
+import { register, getCurrentUser } from "~/api/auth";
 import { useAuth } from "~/context/AuthContext";
 import { ApiException } from "~/api/errors";
 
@@ -26,9 +26,8 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(values);
-
-      await login({ email: values.email, password: values.password });
+      const { confirmPassword, ...payload } = values;
+      await register(payload);
       const user = await getCurrentUser();
       setUser(user);
 

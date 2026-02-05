@@ -7,6 +7,8 @@ interface ProfileInfoCardProps {
 }
 
 export function ProfileInfoCard({ user }: ProfileInfoCardProps) {
+  const banned = user.banned ?? user.is_banned ?? false;
+
   const getRoleTag = () => {
     switch (user.role) {
       case "admin":
@@ -24,6 +26,13 @@ export function ProfileInfoCard({ user }: ProfileInfoCardProps) {
     return (kopecks / 100).toFixed(2) + " ₽";
   };
 
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("ru-RU");
+  };
+
   return (
     <Card>
       <Descriptions column={1} bordered>
@@ -32,15 +41,36 @@ export function ProfileInfoCard({ user }: ProfileInfoCardProps) {
         <Descriptions.Item label="Отчество">
           {user.patronymic || "—"}
         </Descriptions.Item>
-        <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
+        <Descriptions.Item label="Email">{user.email || "—"}</Descriptions.Item>
         <Descriptions.Item label="Роль">{getRoleTag()}</Descriptions.Item>
-        <Descriptions.Item label="Баланс">
-          <span style={{ color: user.balance >= 0 ? undefined : red.primary }}>
-            {formatBalance(user.balance || 0)}
-          </span>
-        </Descriptions.Item>
+        {typeof user.balance === "number" && (
+          <Descriptions.Item label="Баланс">
+            <span
+              style={{
+                color: user.balance >= 0 ? undefined : red.primary,
+              }}
+            >
+              {formatBalance(user.balance)}
+            </span>
+          </Descriptions.Item>
+        )}
+        {user.registered_at && (
+          <Descriptions.Item label="Дата регистрации">
+            {formatDate(user.registered_at)}
+          </Descriptions.Item>
+        )}
+        {typeof user.subscription_days === "number" && (
+          <Descriptions.Item label="Подписка (дней)">
+            {user.subscription_days}
+          </Descriptions.Item>
+        )}
+        {user.subscription_start && (
+          <Descriptions.Item label="Начало подписки">
+            {formatDate(user.subscription_start)}
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="Статус">
-          {!user.is_banned ? (
+          {!banned ? (
             <Tag color="green">Активен</Tag>
           ) : (
             <Tag color="red">Заблокирован</Tag>

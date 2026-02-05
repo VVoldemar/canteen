@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { getCurrentUser, logout as apiLogout } from "~/api/auth";
-import { getToken, removeToken } from "~/api/client";
+import { getToken, removeTokens } from "~/api/client";
 import type { User } from "~/types";
 
 interface AuthContextType {
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await getCurrentUser();
       setUser(userData);
     } catch {
-      removeToken();
+      removeTokens();
       setUser(null);
     } finally {
       setIsLoading(false);

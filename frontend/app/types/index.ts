@@ -9,17 +9,27 @@ export interface User {
   name: string;
   surname: string;
   patronymic?: string;
-  email: string;
   role: UserRole;
-  balance: number;
-  is_banned: boolean;
-  allergies: Ingredient[];
+  email?: string;
+  registered_at?: string;
+  banned?: boolean;
+  subscription_start?: string | null;
+  subscription_days?: number | null;
+  balance?: number;
+  is_banned?: boolean;
+  allergies?: Ingredient[];
 }
 
 export interface UpdateUserRequest {
-  name: string;
-  surname: string;
+  name?: string;
+  surname?: string;
   patronymic?: string;
+  password?: string;
+}
+
+export interface AdminUpdateUserRequest {
+  role?: UserRole;
+  banned?: boolean;
 }
 
 export interface AddAllergyRequest {
@@ -56,6 +66,6 @@ export interface RegisterRequest {
 
 export interface TokenResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
-  expires_in: number;
 }
