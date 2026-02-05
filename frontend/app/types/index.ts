@@ -180,6 +180,72 @@ export interface PurchaseSubscriptionRequest {
   days: number;
 }
 
+export interface Period {
+  from: string;
+  to: string;
+}
+
+export interface PaymentStatisticsResponse {
+  total_amount: number;
+  orders_count: number;
+  subscriptions_count: number;
+  average_order_amount: number;
+  period: Period;
+}
+
+export interface AttendanceStatisticsByDay {
+  date: string;
+  served: number;
+  paid: number;
+}
+
+export interface AttendanceStatisticsResponse {
+  total_served: number;
+  total_paid: number;
+  attendance_rate: number;
+  by_date: AttendanceStatisticsByDay[];
+}
+
+export interface DishStatistic {
+  dish: Dish;
+  orders_count: number;
+  average_rating?: number | null;
+  reviews_count: number;
+}
+
+export interface DishStatisticsResponse {
+  dishes: DishStatistic[];
+}
+
+export interface CostsReportResponse {
+  from: string;
+  to: string;
+  procurement_applications: number;
+  estimated_total_cost_kopecks: number;
+}
+
+export interface NutritionDishBreakdown {
+  dish_id: number;
+  dish_name: string;
+  quantity: number;
+}
+
+export interface NutritionReportResponse {
+  from: string;
+  to: string;
+  served_orders: number;
+  dishes_breakdown: NutritionDishBreakdown[];
+}
+
+export interface Notification {
+  id: number;
+  user_id?: number | null;
+  created_at: string;
+  title: string;
+  body: string;
+  read: boolean;
+}
+
 export interface CreateDishRequest {
   name: string;
   price: number;
