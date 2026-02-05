@@ -3,3 +3,5 @@ export { getToken, setToken, removeToken } from "./client";
 export { ApiException } from "./errors";
 export type { ApiError } from "./errors";
 export { login, register, logout, getCurrentUser } from "./auth";
+export { updateProfile, getAllergies, addAllergy, removeAllergy } from "./users";
+export { getIngredients, getIngredient } from "./ingredients";
