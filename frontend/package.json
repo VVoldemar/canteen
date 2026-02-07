@@ -9,6 +9,7 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@ant-design/colors": "^8.0.1",
     "@ant-design/icons": "^6.1.0",
     "@react-router/node": "7.12.0",
     "@react-router/serve": "7.12.0",

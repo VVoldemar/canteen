@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { getCurrentUser, logout as apiLogout } from "~/api/auth";
-import { getToken, removeToken } from "~/api/client";
+import { getToken, removeTokens } from "~/api/client";
 import type { User } from "~/types";
 
 interface AuthContextType {
@@ -23,9 +23,13 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchUser = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const token = getToken();
 
     if (!token) {
@@ -38,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await getCurrentUser();
       setUser(userData);
     } catch {
-      removeToken();
+      removeTokens();
       setUser(null);
     } finally {
       setIsLoading(false);
