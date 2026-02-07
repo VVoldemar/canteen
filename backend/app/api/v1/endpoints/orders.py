@@ -55,7 +55,7 @@ async def create_order(
                 ):
 
     try:
-        return await orders_manager.create(session, user.id, order_in)
+        return await orders_manager.create(session, user, order_in)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

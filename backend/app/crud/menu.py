@@ -7,14 +7,16 @@ import logging
 
 from app.crud.paginating import paginate
 from app.schemas.paginating import PaginationParams, PaginatedResponse
+from app.models.associations import MenuItem
 from app.models.menu import Menu
+
 from app.schemas.menu import CreateMenuRequest, UpdateMenuRequest, MenuResponse
 
 logger = logging.getLogger(__name__)
 
 class MenuCRUD:
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model: Menu):
+        self.model = model 
     
 
     async def get_all(self, session: AsyncSession) -> Menu:
@@ -51,40 +53,44 @@ class MenuCRUD:
         query = select(self.model).order_by(self.model.id)
         return await paginate(session, query, params)
     
-    async def create(self, session: AsyncSession, new_menu: CreateMenuRequest) -> Menu:
-        """Create a new menu."""
-        try:
-            new_menu = new_menu.model_dump(exclude_unset=True, exclude_none=True)
-            
-            stmt = select(self.model).where(self.model.name == new_menu["name"])
-            if (await session.execute(stmt)).scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Menu already exists"
-                )
-            if "dish_ids" in new_menu.keys():
-                db_menu = self.model(
-                    name=new_menu["name"],
-                    items=new_menu["dish_ids"]
-                )
-            else:
-                db_menu = self.model(
-                    name=new_menu["name"],
-                )
-            session.add(db_menu)
-            await session.commit()
-            await session.refresh(db_menu)
-            return db_menu
+    async def create(self, session: AsyncSession, obj_in: CreateMenuRequest) -> Menu:
+        """Создание меню """
 
-        except HTTPException:
-            raise
+        stmt_check = select(self.model).where(self.model.name == obj_in.name)
+        if (await session.execute(stmt_check)).scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Menu already exists")
+
+        try:
+
+            db_menu = self.model(name=obj_in.name)
+            session.add(db_menu)
+
+            await session.flush()
+            if obj_in.dish_ids:
+                for d_id in obj_in.dish_ids:
+                    menu_item = MenuItem(
+                        menu_id=db_menu.id,
+                        dish_id=d_id
+                    )
+                    session.add(menu_item)
+
+            await session.commit()
+
+            stmt_final = (
+                select(self.model)
+                .options(
+                    selectinload(self.model.items) 
+                    .selectinload(MenuItem.dish)   
+                )
+                .where(self.model.id == db_menu.id)
+            )
+            result = await session.execute(stmt_final)
+            return result.scalar_one()
+
         except Exception as e:
             await session.rollback()
             logger.error(f"Error creating menu: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create menu"
-            )
+            raise HTTPException(status_code=500, detail="Internal Server Error")
         
     async def update(
         self, 

@@ -139,6 +139,29 @@ class UserCRUD:
             await session.rollback()
             raise HTTPException(status_code=400, detail="Update constraint violation")
 
+
+    async def update_balance(
+        self,
+        session: AsyncSession,
+        user: User,
+        new_money: int,
+    ) -> None:
+        try:
+
+            stmt = (
+                update(self.model)
+                .where(self.model.id == id)
+                .values(balance=(user.balance + new_money))
+                .execution_options(synchronize_session="fetch")
+            )
+
+            result = await session.execute(stmt)
+            
+            return 
+        except Exception as e:
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
+
+
     async def purchase_subscription(
         self, 
         session: AsyncSession, 

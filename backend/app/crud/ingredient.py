@@ -18,8 +18,8 @@ from app.schemas.dish import (
 logger = logging.getLogger(__name__)
 
 class IngredientCRUD:
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model : Ingredient):
+        self.model = model 
     
     async def get_by_id(self, session: AsyncSession, id: int) -> Ingredient:
         """Get a ingredient by ID."""
