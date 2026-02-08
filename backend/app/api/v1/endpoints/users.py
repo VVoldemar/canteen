@@ -184,9 +184,10 @@ async def update_user(
         }
     )
 async def update_user_balance(
-    summa: int,
+    summa: int = Body(embed=True),
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession =Depends(get_session)
     ):
+
     await users_manager.update_balance(session, user, summa)
     return

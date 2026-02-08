@@ -93,6 +93,7 @@ class UserCRUD:
                 email=new_user.email,
                 patronymic=new_user.patronymic,
                 password=hashed_password,
+                balance=None,
             )
             
             session.add(db_user)
@@ -150,16 +151,17 @@ class UserCRUD:
 
             stmt = (
                 update(self.model)
-                .where(self.model.id == id)
-                .values(balance=(user.balance + new_money))
+                .where(self.model.id==user.id)
+                .values(balance=user.balance + new_money)
                 .execution_options(synchronize_session="fetch")
             )
 
             result = await session.execute(stmt)
-            
+            await session.commit()
+
             return 
         except Exception as e:
-            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
 
 
     async def purchase_subscription(
@@ -281,6 +283,7 @@ class UserCRUD:
         user.banned = not user.banned
         await session.commit()
         return user.banned
+    
 
 
 users_manager = UserCRUD(User)
