@@ -36,7 +36,6 @@ async def get_orders(
     if user.role == UserRole.STUDENT:
         target_user_id = user.id
     
-    
     return await orders_manager.get_all_paginated(
         session, params, target_user_id, status, date_from, date_to
     )
@@ -54,7 +53,7 @@ async def get_orders(
                     })
 async def create_order(
     order_in: CreateOrderRequest,
-    user=Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT)),
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT, UserRole.COOK)),
     session: AsyncSession = Depends(get_session)
 ):
     
@@ -128,7 +127,7 @@ async def cancel_order(
                     })
 async def confirm_order(
     order_id: int, 
-    user=Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT)),
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession = Depends(get_session)
     ):
     order = await orders_manager.get_by_id(session, order_id)
