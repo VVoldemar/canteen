@@ -20,6 +20,7 @@ users_router = APIRouter(prefix="/users", tags=["Users"])
 @users_router.get("/me", 
     summary="Информация о пользователе", 
     description="Получить информацию о текущем пользователе",
+    response_model=UserResponse,
     responses={
         200: {"model": UserResponse},
         401: {"model": ErrorResponse, "description": "Не авторизован"}
@@ -177,6 +178,7 @@ async def update_user(
     "/me/top-up",
     summary="Пополнить собственный баланс",
     description="Для всех пользоаптелей",
+    response_model=UserResponse,
     responses={
             201: {'description': "Баланс пополнен"},
             401: {'model': ErrorResponse, "description": "Не авторизован"},
@@ -195,10 +197,11 @@ async def update_user_balance(
 
 @users_router.patch(
     "/top-up/{user_id}",
-    summary="Пополнить собственный баланс",
-    description="Для всех пользоаптелей",
+    summary="Пополнить баланс пользователя по id",
+    description="Для администратора",
+    response_model=UserResponse,
     responses={
-            201: {'description': "Баланс пополнен"},
+            201: {'model': UserResponse,'description': "Баланс пополнен"},
             401: {'model': ErrorResponse, "description": "Не авторизован"},
             400: {'model': ErrorResponse, "description": "Некорректный запрос"}
         }
