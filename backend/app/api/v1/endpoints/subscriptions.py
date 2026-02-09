@@ -13,6 +13,7 @@ from app.schemas.validation import ErrorResponse, ValidationError
 
 subscriptions_router = APIRouter(prefix='/subscriptions', tags=['Subscriptions'])
 
+
 @subscriptions_router.get('/my', summary='Получить информацию об абонементе', description='Получить активный абонемент текущего пользователя',
                         response_model=SubscriptionResponse,
                         responses={

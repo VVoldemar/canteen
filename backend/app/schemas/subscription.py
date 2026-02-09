@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class PurchaseSubscriptionRequest(BaseModel):
     days: int = Field(gt=0)
+    id_order: int
 
 
 class SubscriptionResponse(BaseModel):

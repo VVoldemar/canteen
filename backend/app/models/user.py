@@ -23,9 +23,9 @@ class User(SqlAlchemyBase):
     
     subscription_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     subscription_days: Mapped[int] = mapped_column(Integer(), default=0)
-    # subscription_order: Mapped[List["Order"]] = relationship(back_populates="subscribed_user")
+    subscription_order: Mapped[List["Order"]] = relationship(back_populates="subscribed_user", overlaps="orderer,orders")
 
     ingredient_allergies: Mapped[List["Ingredient"]] = relationship(secondary="user_allergies", back_populates="allergic_users")
-    orders: Mapped[List["Order"]] = relationship(back_populates="orderer", cascade="all, delete-orphan")
+    orders: Mapped[List["Order"]] = relationship(back_populates="orderer", cascade="all, delete-orphan", overlaps="subscription_order,subscribed_user")
     reviews: Mapped[List["Review"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     applications: Mapped[List["Application"]] = relationship(back_populates="applicant", cascade="all")
