@@ -21,11 +21,11 @@ export interface MenuItem {
 }
 
 export const menuItems: MenuItem[] = [
-  {
-    key: "/",
-    icon: <HomeOutlined />,
-    label: "Главная",
-  },
+  // {
+  //   key: "/",
+  //   icon: <HomeOutlined />,
+  //   label: "Главная",
+  // },
   {
     key: "/menu",
     icon: <AppstoreOutlined />,

@@ -8,11 +8,12 @@ import {
 export default [
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
+  index("routes/home.tsx"),
 
   layout("routes/_app.tsx", [
-    index("routes/home.tsx"),
     route("profile", "routes/profile.tsx"),
     route("menu", "routes/menu.tsx"),
+    route("menu/:menuId", "routes/menu.$menuId.tsx"),
     route("dishes", "routes/dishes.tsx"),
     route("orders", "routes/orders.tsx"),
     route("reviews", "routes/reviews.tsx"),

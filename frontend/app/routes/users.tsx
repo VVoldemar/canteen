@@ -9,10 +9,12 @@ import {
   Tag,
   Typography,
   Empty,
+  InputNumber,
+  Popconfirm,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Route } from "./+types/users";
-import { getUsers, updateUserAdmin } from "~/api/users";
+import { getUsers, updateUserAdmin, updateUserBalance } from "~/api/users";
 import { ApiException } from "~/api/errors";
 import { useAuth } from "~/context/AuthContext";
 import type { User, UserRole } from "~/types";
@@ -56,6 +58,9 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
+  const [balanceInputs, setBalanceInputs] = useState<
+    Record<number, number | undefined>
+  >({});
 
   const isUpdating = useCallback(
     (id: number) => updatingIds.includes(id),
@@ -141,6 +146,43 @@ export default function UsersPage() {
     }
   };
 
+  const handleBalanceUpdate = async (record: User) => {
+    const amount = balanceInputs[record.id];
+    if (amount === undefined || amount === 0) {
+      message.warning("Введите сумму");
+      return;
+    }
+
+    setUpdating(record.id, true);
+    try {
+      const amountInKopecks = Math.round(amount * 100);
+      const updated = await updateUserBalance(record.id, amountInKopecks);
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === record.id ? normalizeUser(updated) : item,
+        ),
+      );
+      setBalanceInputs((prev) => {
+        const next = { ...prev };
+        delete next[record.id];
+        return next;
+      });
+      message.success("Баланс обновлен");
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else {
+        message.error("Не удалось обновить баланс");
+      }
+    } finally {
+      setUpdating(record.id, false);
+    }
+  };
+
+  const formatBalance = (kopecks: number) => {
+    return (kopecks / 100).toFixed(2) + " ₽";
+  };
+
   const columns = useMemo<ColumnsType<User>>(
     () => [
       {
@@ -195,12 +237,64 @@ export default function UsersPage() {
         render: (value) => formatDate(value),
       },
       {
+        title: "Баланс",
+        dataIndex: "balance",
+        width: 280,
+        render: (_, record) => {
+          const balance =
+            typeof record.balance === "number" ? record.balance : 0;
+          return (
+            <Space.Compact style={{ width: "100%" }}>
+              <InputNumber
+                style={{ flex: 1 }}
+                placeholder={formatBalance(balance)}
+                value={balanceInputs[record.id]}
+                onChange={(value) => {
+                  setBalanceInputs((prev) => ({
+                    ...prev,
+                    [record.id]: value ?? undefined,
+                  }));
+                }}
+                step={10}
+                precision={2}
+                disabled={isUpdating(record.id)}
+              />
+              <Popconfirm
+                title="Изменить баланс?"
+                description={`Добавить ${balanceInputs[record.id] ?? 0} ₽`}
+                onConfirm={() => handleBalanceUpdate(record)}
+                okText="Да"
+                cancelText="Отмена"
+                disabled={
+                  isUpdating(record.id) ||
+                  balanceInputs[record.id] === undefined ||
+                  balanceInputs[record.id] === null ||
+                  balanceInputs[record.id] === 0
+                }
+              >
+                <Button
+                  type="primary"
+                  disabled={
+                    isUpdating(record.id) ||
+                    balanceInputs[record.id] === undefined ||
+                    balanceInputs[record.id] === null ||
+                    balanceInputs[record.id] === 0
+                  }
+                >
+                  Пополнить
+                </Button>
+              </Popconfirm>
+            </Space.Compact>
+          );
+        },
+      },
+      {
         title: "Подписка (дней)",
         dataIndex: "subscription_days",
         render: (value) => (typeof value === "number" ? value : "—"),
       },
     ],
-    [isUpdating],
+    [isUpdating, balanceInputs],
   );
 
   if (!currentUser) {

@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Form, Input, Button, Card, Typography, App } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link, useLocation } from "react-router";
 import type { Route } from "./+types/login";
 import type { LoginRequest } from "~/types";
 import { login } from "~/api/auth";
-import { getCurrentUser } from "~/api/auth";
-import { useAuth } from "~/context/AuthContext";
 import { ApiException } from "~/api/errors";
+import { getToken } from "~/api/client";
 
 const { Title, Text } = Typography;
 
@@ -18,18 +17,25 @@ export function meta({}: Route.MetaArgs) {
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const location = useLocation();
   const { message } = App.useApp();
+
+  useEffect(() => {
+    if (getToken()) {
+      const from = (location.state as any)?.from?.pathname || "/";
+      navigate(from, { replace: true });
+    }
+  }, [navigate, location]);
 
   const onFinish = async (values: LoginRequest) => {
     setLoading(true);
 
     try {
       await login(values);
-      const user = await getCurrentUser();
-      setUser(user);
       message.success("Добро пожаловать!");
-      navigate("/");
+      
+      const from = (location.state as any)?.from?.pathname || "/";
+      navigate(from, { replace: true });
     } catch (error) {
       if (error instanceof ApiException) {
         message.error(error.error.message);

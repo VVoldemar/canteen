@@ -7,8 +7,9 @@ import {
   type ReactNode,
 } from "react";
 import { getCurrentUser, logout as apiLogout } from "~/api/auth";
-import { getToken, removeTokens } from "~/api/client";
+import { getToken, removeTokens, getRefreshToken } from "~/api/client";
 import type { User } from "~/types";
+import { ApiException } from "~/api/errors";
 
 interface AuthContextType {
   user: User | null;
@@ -41,9 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userData = await getCurrentUser();
       setUser(userData);
-    } catch {
-      removeTokens();
-      setUser(null);
+    } catch (error) {
+      if (error instanceof ApiException && error.status === 401) {
+        removeTokens();
+        setUser(null);
+      } else {
+        removeTokens();
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +57,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchUser();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "access_token") {
+        if (e.newValue) {
+          fetchUser();
+        } else {
+          setUser(null);
+        }
+      }
+    };
+
+    const handleTokenChange = () => {
+      const token = getToken();
+      if (token) {
+        fetchUser();
+      } else {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("tokenChange", handleTokenChange);
+
+    const interval = setInterval(() => {
+      const token = getToken();
+      const refreshToken = getRefreshToken();
+      
+      if (token && refreshToken) {
+        fetchUser();
+      } else if (!token && !refreshToken) {
+        setUser(null);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("tokenChange", handleTokenChange);
+      clearInterval(interval);
+    };
   }, [fetchUser]);
 
   const logout = useCallback(async () => {

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Typography, Button } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { Typography, Button, Space } from "antd";
+import { EditOutlined, DollarOutlined } from "@ant-design/icons";
 import { useAuth } from "~/context/AuthContext";
 import { ProfileInfoCard } from "~/components/Profile/ProfileInfoCard";
 import { AllergiesSection } from "~/components/Profile/AllergiesSection";
 import { EditProfileModal } from "~/components/Profile/EditProfileModal";
+import { TopUpBalanceModal } from "~/components/Profile/TopUpBalanceModal";
 
 const { Title } = Typography;
 
@@ -15,6 +16,7 @@ export function meta() {
 export default function ProfilePage() {
   const { user, refetchUser } = useAuth();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [topUpModalOpen, setTopUpModalOpen] = useState(false);
 
   if (!user) {
     return null;
@@ -26,9 +28,17 @@ export default function ProfilePage() {
         <Title level={2} className="!mb-0">
           Мой профиль
         </Title>
-        <Button icon={<EditOutlined />} onClick={() => setEditModalOpen(true)}>
-          Редактировать
-        </Button>
+        <Space>
+          <Button
+            icon={<DollarOutlined />}
+            onClick={() => setTopUpModalOpen(true)}
+          >
+            Пополнить баланс
+          </Button>
+          <Button icon={<EditOutlined />} onClick={() => setEditModalOpen(true)}>
+            Редактировать
+          </Button>
+        </Space>
       </div>
 
       <ProfileInfoCard user={user} />
@@ -40,6 +50,12 @@ export default function ProfilePage() {
         user={user}
         onClose={() => setEditModalOpen(false)}
         onUpdate={refetchUser}
+      />
+
+      <TopUpBalanceModal
+        open={topUpModalOpen}
+        onClose={() => setTopUpModalOpen(false)}
+        onSuccess={refetchUser}
       />
     </div>
   );

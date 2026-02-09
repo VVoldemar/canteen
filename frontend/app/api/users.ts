@@ -64,3 +64,17 @@ export async function removeAllergy(ingredientId: number): Promise<void> {
     params: { ingredient_id: ingredientId },
   });
 }
+
+export async function topUpBalance(amount: number): Promise<void> {
+  await apiClient.patch("/users/me/top-up", { summa: amount });
+}
+
+export async function updateUserBalance(
+  userId: number,
+  amount: number,
+): Promise<User> {
+  const response = await apiClient.patch<User>(`/users/top-up/${userId}`, {
+    summa: amount,
+  });
+  return response.data;
+}

@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Form, Input, Button, Card, Typography, App } from "antd";
 import { UserOutlined, LockOutlined, IdcardOutlined } from "@ant-design/icons";
 import { useNavigate, Link } from "react-router";
 import type { Route } from "./+types/register";
 import type { RegisterRequest } from "~/types";
-import { register, getCurrentUser } from "~/api/auth";
-import { useAuth } from "~/context/AuthContext";
+import { register } from "~/api/auth";
 import { ApiException } from "~/api/errors";
+import { getToken } from "~/api/client";
 
 const { Title, Text } = Typography;
 
@@ -17,8 +17,13 @@ export function meta({}: Route.MetaArgs) {
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
   const { message } = App.useApp();
+
+  useEffect(() => {
+    if (getToken()) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
 
   const onFinish = async (
     values: RegisterRequest & { confirmPassword: string },
@@ -28,11 +33,9 @@ export default function RegisterPage() {
     try {
       const { confirmPassword, ...payload } = values;
       await register(payload);
-      const user = await getCurrentUser();
-      setUser(user);
 
       message.success("Регистрация успешна!");
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (error) {
       if (error instanceof ApiException) {
         if (error.status === 409) {

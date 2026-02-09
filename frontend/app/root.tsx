@@ -11,6 +11,7 @@ import ruRU from "antd/locale/ru_RU";
 
 import type { Route } from "./+types/root";
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import "./app.css";
 
 // export const links: Route.LinksFunction = () => [
@@ -49,7 +50,9 @@ export default function App() {
     <ConfigProvider locale={ruRU}>
       <AntApp>
         <AuthProvider>
-          <Outlet />
+          <CartProvider>
+            <Outlet />
+          </CartProvider>
         </AuthProvider>
       </AntApp>
     </ConfigProvider>
