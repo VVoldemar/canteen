@@ -30,8 +30,11 @@ def require_roles(*allowed_roles: UserRole):
     async def dep(user=Depends(get_current_user)):
         role = UserRole(user.role)
 
-        if role == UserRole.ADMIN:
-            return user
+        if bool(user.banned) == True:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are banned!"
+                )
 
         if role not in allowed_roles:
             raise HTTPException(

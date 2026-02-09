@@ -2,15 +2,16 @@ from typing import List, Optional
 from datetime import date, datetime
 from pydantic import BaseModel, Field, ConfigDict
 
+from app.core.enums import Reports
 
 class GenerateReportRequest(BaseModel):
-    report_type: str
+    report_type: Reports
     date_from: Optional[date] = None
     date_to: Optional[date] = None
 
 
 class ReportResponse(BaseModel):
-    report_id: str
+    id: int
     report_type: str
     generated_at: datetime
     download_url: str
@@ -20,7 +21,7 @@ class ReportResponse(BaseModel):
 
 class CostsReportResponse(BaseModel):
     from_: date = Field(alias="from")
-    to: date
+    to: date = Field(alias="to")
     procurement_applications: int
     estimated_total_cost_kopecks: int
 
@@ -40,3 +41,22 @@ class NutritionReportResponse(BaseModel):
     dishes_breakdown: List[NutritionDishBreakdown]
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class DishPopularity(BaseModel):
+    name: str
+    count: int
+
+
+class AttendanceReportResponse(BaseModel):
+    date_from: date = Field(alias="from")
+    date_to: date = Field(alias="to")
+    
+    meals: int
+    
+    cancelled_orders: int
+    cancellation_ratio: float
+    
+    popularity: List[DishPopularity] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Union
@@ -158,7 +158,7 @@ class UserCRUD:
 
             result = await session.execute(stmt)
             await session.commit()
-
+            await session.refresh(user)
             return 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
@@ -283,7 +283,6 @@ class UserCRUD:
         user.banned = not user.banned
         await session.commit()
         return user.banned
-    
 
 
 users_manager = UserCRUD(User)

@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, case, cast, Date
+from sqlalchemy import select, func, and_, case
 
 
 
@@ -9,9 +9,7 @@ from app.models.associations import OrderItem
 from app.models.dish import Dish
 from app.models.review import Review
 from app.models.user import User
-from app.models.application import Application
-from app.models.associations import ApplicationItem
-from app.models.dish import Ingredient
+
 from app.core.enums import OrderStatus
 
 
@@ -23,11 +21,6 @@ from app.schemas.statistic import (
     DishStatistic,
 )
 from app.schemas.dish import DishResponse
-from app.schemas.report import (
-    CostsReportResponse,
-    NutritionReportResponse,
-    NutritionDishBreakdown,
-)
 
 class StatisticCRUD:
     def _apply_date_filter(self, query, model_date_field, date_from: date, date_to: date):
@@ -177,73 +170,5 @@ class StatisticCRUD:
             
         return DishStatisticsResponse(dishes=items)
 
-    async def get_costs_report(
-        self, session: AsyncSession, date_from: date, date_to: date
-    ) -> CostsReportResponse:
-        
-        stmt = (
-            select(
-                func.count(func.distinct(Application.id)).label("app_count"),
-                func.sum(ApplicationItem.quantity * Ingredient.price).label("total_cost")
-            )
-            .select_from(Application)
-            .join(Application.products)
-            .join(ApplicationItem.ingredient)
-            .where(Application.status != OrderStatus.CANCELLED)
-        )
-        stmt = self._apply_date_filter(stmt, Application.datetime, date_from, date_to)
-        
-        result = (await session.execute(stmt)).one()
-        
-        return CostsReportResponse(
-            **{
-                "from": date_from,
-                "to": date_to,
-                "procurement_applications": result.app_count or 0,
-                "estimated_total_cost_kopecks": result.total_cost or 0
-            }
-        )
-
-    async def get_nutrition_report(
-        self, session: AsyncSession, date_from: date, date_to: date
-    ) -> NutritionReportResponse:
-        
-        stmt_count = select(func.count(Order.id)).where(Order.status == OrderStatus.SERVED)
-        stmt_count = self._apply_date_filter(stmt_count, Order.ordered_at, date_from, date_to)
-        served_orders = (await session.execute(stmt_count)).scalar() or 0
-        
-        # 2. Разбивка по блюдам
-        stmt_dishes = (
-            select(
-                Dish.id,
-                Dish.name,
-                func.sum(OrderItem.quantity).label("total_qty")
-            )
-            .select_from(Order)
-            .join(Order.dishes)
-            .join(OrderItem.dish)
-            .where(Order.status == OrderStatus.SERVED)
-        )
-        stmt_dishes = self._apply_date_filter(stmt_dishes, Order.ordered_at, date_from, date_to)
-        stmt_dishes = stmt_dishes.group_by(Dish.id, Dish.name)
-        
-        dish_rows = (await session.execute(stmt_dishes)).all()
-        
-        breakdown = []
-        for row in dish_rows:
-            breakdown.append(NutritionDishBreakdown(
-                dish_id=row.id,
-                dish_name=row.name,
-                quantity=row.total_qty
-            ))
-
-        return NutritionReportResponse(
-            **{
-                "from": date_from,
-                "to": date_to,
-                "served_orders": served_orders,
-                "dishes_breakdown": breakdown
-            }
-        )
 
 statistic_manager = StatisticCRUD()
