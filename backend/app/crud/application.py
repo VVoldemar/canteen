@@ -32,6 +32,7 @@ class ApplicationCRUD:
         stmt = (
             select(self.model)
             .options(
+                joinedload(self.model.applicant),
                 selectinload(self.model.products).joinedload(ApplicationItem.ingredient)
             )
             .where(self.model.id == application_id)
@@ -52,7 +53,11 @@ class ApplicationCRUD:
         """
         Get a list of applications with status filtering.
         """
-        query = select(self.model).order_by(self.model.datetime.desc())
+        query = (
+            select(self.model)
+            .options(joinedload(self.model.applicant))
+            .order_by(self.model.datetime.desc())
+        )
 
         if status:
             query = query.where(self.model.status == status)
@@ -143,8 +148,7 @@ class ApplicationCRUD:
             )
         
         application.status = OrderStatus.CANCELLED
-        if hasattr(application, 'rejection_reason') and reason:
-            application.rejection_reason = reason
+        application.rejection_reason = reason
             
         await session.commit()
         return application
