@@ -10,6 +10,7 @@ class IngredientResponse(BaseModel):
     name: Name
     price: Price
     measure: Measures
+    image_url: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -24,12 +25,14 @@ class UpdateIngredientRequest(BaseModel):
     name: Optional[Name] = None
     price: Optional[int] = Field(None, ge=0)
     measure: Optional[Measures] = None
+    image_url: Optional[str] = None
 
 
 class DishResponse(BaseModel):
     id: int
     name: Name
     price: Price
+    image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,6 +54,7 @@ class DishDetailResponse(BaseModel):
     name: Name
     price: Price
     ingredients: List[DishIngredientResponse]
+    image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,7 +62,7 @@ class DishDetailResponse(BaseModel):
 class CreateDishRequest(BaseModel):
     name: Name
     price: Price
-    ingredients: List[DishIngredientLink]
+    ingredients: Optional[List[DishIngredientLink]] = None
 
 
 class UpdateDishRequest(BaseModel):

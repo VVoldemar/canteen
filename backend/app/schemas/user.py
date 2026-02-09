@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     role: UserRole
     registered_at: datetime
     banned: bool
+    balance: Optional[int] = None
     subscription_start: Optional[datetime] = None
     subscription_days: Optional[int] = None
 

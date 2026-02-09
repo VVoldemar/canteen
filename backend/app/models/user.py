@@ -19,6 +19,7 @@ class User(SqlAlchemyBase):
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now, nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.STUDENT, nullable=False)
     banned: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
+    balance: Mapped[int] = mapped_column(Integer(), default=0)
     
     subscription_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     subscription_days: Mapped[int] = mapped_column(Integer(), default=0)

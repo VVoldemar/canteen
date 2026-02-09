@@ -7,10 +7,13 @@ from fastapi import HTTPException, status
 import logging
 
 from app.crud.paginating import paginate
+from app.crud.dish import dish_manager
+from app.crud.user import users_manager
 
 from app.models.order import Order
 from app.models.associations import OrderItem
 from app.models.dish import Dish
+from app.models.user import User
 
 from app.core.enums import OrderStatus
 
@@ -77,16 +80,28 @@ class OrderCRUD:
     async def create(
         self, 
         session: AsyncSession, 
-        user_id: int, 
+        user: User, 
         order_in: CreateOrderRequest
     ) -> Order:
         """Создать новый заказ."""
         try:
+            cost = 0
+
+            for dish in order_in.dishes:
+                _dish: Dish = dish_manager.get_by_id(session, dish.dish_id)
+                cost += _dish.price * dish.quantity
+
+            if cost > user.balance:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough balance!")
+            
             if not order_in.dishes:
-                raise HTTPException(status_code=400, detail="Order must contain dishes")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order must contain dishes")
+            
+            user_money = user.balance - cost
+            await users_manager.update_balance(session, user_money)
 
             new_order = self.model(
-                user_id=user_id,
+                user_id=user.id,
                 ordered_at=datetime.now(),
                 status=OrderStatus.PAID,
                 completed_at=None

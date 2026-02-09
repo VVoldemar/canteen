@@ -171,3 +171,44 @@ async def update_user(
     session: AsyncSession = Depends(get_session)
     ): 
     return await users_manager.update(session, user_id, update_data)
+
+
+@users_router.patch(
+    "/me/top-up",
+    summary="Пополнить собственный баланс",
+    description="Для всех пользоаптелей",
+    responses={
+            201: {'description': "Баланс пополнен"},
+            401: {'model': ErrorResponse, "description": "Не авторизован"},
+            400: {'model': ErrorResponse, "description": "Некорректный запрос"}
+        }
+    )
+async def update_user_balance(
+    summa: int = Body(embed=True),
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
+    session: AsyncSession =Depends(get_session)
+    ):
+
+    await users_manager.update_balance(session, user, summa)
+    return
+
+
+@users_router.patch(
+    "/top-up/{user_id}",
+    summary="Пополнить собственный баланс",
+    description="Для всех пользоаптелей",
+    responses={
+            201: {'description': "Баланс пополнен"},
+            401: {'model': ErrorResponse, "description": "Не авторизован"},
+            400: {'model': ErrorResponse, "description": "Некорректный запрос"}
+        }
+    )
+async def update_user_balance(
+    user_id: int,
+    summa: int = Body(embed=True),
+    user=Depends(require_roles(UserRole.ADMIN)),
+    session: AsyncSession =Depends(get_session)
+    ):
+    change_user = await users_manager.get_by_id(session, user_id)
+    await users_manager.update_balance(session, change_user, summa)
+    return change_user

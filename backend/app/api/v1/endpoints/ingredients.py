@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from typing import Annotated
+from typing import Annotated, Optional
 
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
@@ -27,10 +27,11 @@ ingredients_router = APIRouter(prefix='/ingredients', tags=['Ingredients'])
     )
 async def get_ingredients(
     params: Annotated[PaginationParams, Depends()],
+    search: Optional[str] = None,
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession = Depends(get_session)
     ):
-    return await ingredients_manager.get_all_paginated(session, params)
+    return await ingredients_manager.get_all_paginated(session, params, search)
 
 @ingredients_router.post(
         '/', 

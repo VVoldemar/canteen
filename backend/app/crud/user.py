@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Union
@@ -93,6 +93,7 @@ class UserCRUD:
                 email=new_user.email,
                 patronymic=new_user.patronymic,
                 password=hashed_password,
+                balance=None,
             )
             
             session.add(db_user)
@@ -138,6 +139,30 @@ class UserCRUD:
         except IntegrityError:
             await session.rollback()
             raise HTTPException(status_code=400, detail="Update constraint violation")
+
+
+    async def update_balance(
+        self,
+        session: AsyncSession,
+        user: User,
+        new_money: int,
+    ) -> None:
+        try:
+
+            stmt = (
+                update(self.model)
+                .where(self.model.id==user.id)
+                .values(balance=user.balance + new_money)
+                .execution_options(synchronize_session="fetch")
+            )
+
+            result = await session.execute(stmt)
+            await session.commit()
+            await session.refresh(user)
+            return 
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
+
 
     async def purchase_subscription(
         self, 
