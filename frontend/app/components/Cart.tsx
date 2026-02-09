@@ -126,6 +126,8 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
     switch (status) {
       case "paid":
         return "Оплачен";
+      case "prepared":
+        return "Готов к выдаче";
       case "served":
         return "Выдан";
       case "cancelled":

@@ -1,4 +1,4 @@
-export type OrderStatus = "paid" | "served" | "cancelled";
+export type OrderStatus = "paid" | "prepared" | "served" | "cancelled";
 
 export type Measure = "Kg" | "L";
 
