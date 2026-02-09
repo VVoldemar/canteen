@@ -1,4 +1,9 @@
-import type { CostsReportResponse, NutritionReportResponse } from "~/types";
+import type {
+  CostsReportResponse,
+  NutritionReportResponse,
+  GenerateReportRequest,
+  ReportResponse,
+} from "~/types";
 import apiClient from "./client";
 
 export interface ReportParams {
@@ -22,5 +27,22 @@ export async function getNutritionReport(
     "/reports/nutrition",
     { params },
   );
+  return response.data;
+}
+
+export async function generateReport(
+  request: GenerateReportRequest,
+): Promise<ReportResponse> {
+  const response = await apiClient.post<ReportResponse>(
+    "/reports/generate-pdf",
+    request,
+  );
+  return response.data;
+}
+
+export async function downloadReport(downloadUrl: string): Promise<Blob> {
+  const response = await apiClient.get(downloadUrl, {
+    responseType: "blob",
+  });
   return response.data;
 }

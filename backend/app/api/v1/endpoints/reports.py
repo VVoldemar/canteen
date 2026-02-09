@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from typing import Optional
 
 from app.core.security.auth import require_roles
@@ -31,8 +31,8 @@ reports_router = APIRouter(prefix='/reports', tags=['Reports'])
                         403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
                     })
 async def report_costs(
-                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
-                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
+                    date_from: Optional[date] = None,
+                    date_to: Optional[date] = None,
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -51,8 +51,8 @@ async def report_costs(
                         }
                     )
 async def report_nutrition(
-                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
-                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
+                    date_from: Optional[date] = None,
+                    date_to: Optional[date] = None,
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
@@ -61,8 +61,8 @@ async def report_nutrition(
 
 
 @reports_router.get('/attendance', 
-                    summary='Отчет по питанию', 
-                    description='Администратор формирует отчет по питанию (кол-во выданных заказов и разбивка по блюдам) за период.',
+                    summary='Отчет по посещаемости', 
+                    description='Администратор формирует отчет по посещаемости столовой за период.',
                     response_model=AttendanceReportResponse,
                     responses={
                         200: {'model': AttendanceReportResponse, 'description': 'OK'},
@@ -71,8 +71,8 @@ async def report_nutrition(
                         }
                     )
 async def report_attendance(
-                    date_from: Optional[datetime] = (datetime.now(timezone.utc).date() - timedelta(days=7)),
-                    date_to: Optional[datetime] = datetime.now(timezone.utc).date(),
+                    date_from: Optional[date] = None,
+                    date_to: Optional[date] = None,
                     user=Depends(require_roles(UserRole.ADMIN)),
                     session: AsyncSession = Depends(get_session)
                 ):
