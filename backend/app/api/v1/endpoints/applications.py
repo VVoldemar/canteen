@@ -105,14 +105,14 @@ async def approve_application(
                             409: {'model': ErrorResponse, 'description': 'Конфликт (операция недоступна в текущем состоянии)'}
                         })
 async def reject_application(
-                        reason: ApplicationRejectRequest,
+                        data: ApplicationRejectRequest,
                         application_id: int, 
                         user=Depends(require_roles(UserRole.ADMIN)),
                         session: AsyncSession = Depends(get_session)
                     ):
     
     try:
-        return await applications_manager.reject(session, application_id, reason)
+        return await applications_manager.reject(session, application_id, data.reason)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

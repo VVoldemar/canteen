@@ -4,12 +4,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import OrderStatus
 from app.schemas.dish import IngredientResponse
+from app.schemas.user import UserShortResponse
 
 class ApplicationResponse(BaseModel):
     id: int
     user_id: int
+    applicant: UserShortResponse
     datetime: datetime
     status: OrderStatus
+    rejection_reason: str | None = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -24,8 +27,10 @@ class ApplicationProductResponse(BaseModel):
 class ApplicationDetailResponse(BaseModel):
     id: int
     user_id: int
+    applicant: UserShortResponse
     datetime: datetime
     status: OrderStatus
+    rejection_reason: str | None = None
     products: List[ApplicationProductResponse]
 
     model_config = ConfigDict(from_attributes=True)
@@ -41,4 +46,4 @@ class CreateApplicationRequest(BaseModel):
 
 
 class ApplicationRejectRequest(BaseModel):
-    reason: str
+    reason: str | None = None

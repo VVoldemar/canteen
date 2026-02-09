@@ -6,6 +6,15 @@ from app.schemas.annotations import Password, Name
 
 from app.core.enums import UserRole
 
+class UserShortResponse(BaseModel):
+    id: int
+    name: Name
+    surname: str
+    patronymic: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserResponse(BaseModel):
     id: int
     name: Name

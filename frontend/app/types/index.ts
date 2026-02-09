@@ -139,11 +139,20 @@ export interface UpdateReviewRequest {
   content?: string | null;
 }
 
+export interface UserShort {
+  id: number;
+  name: string;
+  surname: string;
+  patronymic?: string;
+}
+
 export interface Application {
   id: number;
   user_id: number;
+  applicant: UserShort;
   datetime: string;
   status: OrderStatus;
+  rejection_reason?: string | null;
 }
 
 export interface ApplicationProduct {
@@ -165,7 +174,7 @@ export interface CreateApplicationRequest {
 }
 
 export interface ApplicationRejectRequest {
-  reason: string;
+  reason?: string;
 }
 
 export interface Subscription {
