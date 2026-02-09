@@ -8,9 +8,9 @@ import {
 export default [
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
+  index("routes/home.tsx"),
 
   layout("routes/_app.tsx", [
-    index("routes/home.tsx"),
     route("profile", "routes/profile.tsx"),
     route("menu", "routes/menu.tsx"),
     route("dishes", "routes/dishes.tsx"),
