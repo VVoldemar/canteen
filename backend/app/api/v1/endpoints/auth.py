@@ -18,10 +18,10 @@ auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 @auth_router.post("/register", summary="Регистрация нового пользователя", description="Регистрация нового ученика в системе",
                 response_model=TokenResponse, 
                 responses={
-                    200: {'model': TokenResponse,'desctiprion': 'Пользователь успешно зарегистрирован'},
-                    400: {'model': ErrorResponse, 'desctiprion': 'Некорректный запрос'},
-                    409: {'model': ErrorResponse, 'desctiprion': 'Пользователь уже существует'},
-                    422: {'model': ValidationError, 'desctiprion': 'Ошибка валидации'},
+                    200: {'model': TokenResponse,'description': 'Пользователь успешно зарегистрирован'},
+                    400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
+                    409: {'model': ErrorResponse, 'description': 'Пользователь уже существует'},
+                    422: {'model': ValidationError, 'description': 'Ошибка валидации'},
                 })
 async def register_user(
                     form: RegisterRequest,
@@ -48,10 +48,10 @@ async def register_user(
 @auth_router.post("/login", summary="Авторизация пользователя", description="Вход в систему с получением JWT токена",
                 response_model=TokenResponse, 
                 responses={
-                    200: {'model': TokenResponse,'desctiprion': 'Успешная авторизация'},
-                    400: {'model': ErrorResponse, 'desctiprion': 'Некорректный запрос'},
-                    401: {'model': ErrorResponse, 'desctiprion': 'Не авторизован'},
-                    422: {'model': ValidationError, 'desctiprion': 'Ошибка валидации'},
+                    200: {'model': TokenResponse,'description': 'Успешная авторизация'},
+                    400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
+                    401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+                    422: {'model': ValidationError, 'description': 'Ошибка валидации'},
                 })
 async def login_user(
                     form: LoginRequest,
@@ -81,10 +81,10 @@ async def login_user(
 @auth_router.post("/refresh_token", summary="Обновление access токена", description="Получение нового access токена по refresh токену",
                 response_model=TokenResponse, 
                 responses={
-                    200: {'model': TokenResponse,'desctiprion': 'Успешная авторизация'},
-                    400: {'model': ErrorResponse, 'desctiprion': 'Некорректный запрос'},
-                    401: {'model': ErrorResponse, 'desctiprion': 'Не авторизован'},
-                    422: {'model': ValidationError, 'desctiprion': 'Ошибка валидации'},
+                    200: {'model': TokenResponse,'description': 'Успешная авторизация'},
+                    400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
+                    401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+                    422: {'model': ValidationError, 'description': 'Ошибка валидации'},
                 })
 async def refresh_token(
                     refresh_token: str,
@@ -93,31 +93,39 @@ async def refresh_token(
 
     payload = decode_token(refresh_token)
 
+    if payload["type"] != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=f"Wrong token type. Expected 'refresh', got '{payload['type']}'"
+        )
+
     try:
         await blacklisted_token_manager.get_by_jti(session, payload["jti"])
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
-    
     except HTTPException as e:
         if e.status_code != status.HTTP_404_NOT_FOUND:
             raise e
 
-    if payload["type"] != "refresh":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Wrong token type. Expected 'refresh', got '{payload['type']}'")
-
     user = await users_manager.get_by_id(session, int(payload["sub"]))
+
+    old_jti = payload["jti"]
+    old_exp = datetime.fromtimestamp(payload["exp"])
+    await blacklisted_token_manager.create(session, old_jti, old_exp)
+
+    new_refresh_token = create_refresh_token(user.id)
 
     return TokenResponse(
         access_token=create_access_token(user.id, user.role),
-        refresh_token=refresh_token,
+        refresh_token=new_refresh_token,
         token_type='bearer'
     )
 
 
 @auth_router.post("/logout", summary="Выход из системы", description="",
                 responses={
-                    200: {'desctiprion': 'Успешный выход'},
-                    400: {'model': ErrorResponse, 'desctiprion': 'Пользователь уже вышел'},
-                    401: {'model': ErrorResponse, 'desctiprion': 'Не авторизован или неверный токен'},
+                    200: {'description': 'Успешный выход'},
+                    400: {'model': ErrorResponse, 'description': 'Пользователь уже вышел'},
+                    401: {'model': ErrorResponse, 'description': 'Не авторизован или неверный токен'},
                 })
 async def logout_user(
                     refresh_token: str = Body(embed=True), 
