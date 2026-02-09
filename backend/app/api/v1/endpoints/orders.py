@@ -138,8 +138,8 @@ async def confirm_order(
 
 
 @orders_router.post('/{order_id}/serve', 
-    summary='Выдать заказ (для Повара)', 
-    description='Повар отмечает, что выдал заказ.',
+    summary='Отметить заказ готовым к выдаче (для Повара)', 
+    description='Повар отмечает, что заказ готов к выдаче.',
     response_model=OrderResponse
 )
 async def serve_order(
@@ -148,4 +148,4 @@ async def serve_order(
     session: AsyncSession = Depends(get_session)
 ):
     
-    return await orders_manager.mark_served(session, order_id)
+    return await orders_manager.mark_prepared(session, order_id)
