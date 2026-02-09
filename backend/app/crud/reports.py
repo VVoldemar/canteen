@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, Select, distinct, desc
 
@@ -61,8 +61,13 @@ class ReportCRUD:
         await self.session.refresh(new_report)
         return new_report
     async def get_costs_report_data(
-        self, session: AsyncSession, date_from: date, date_to: date
+        self, session: AsyncSession, date_from: date = None, date_to: date = None
         ) -> CostsReportResponse:
+        
+        if date_from is None:
+            date_from = datetime.now().date() - timedelta(days=7)
+        if date_to is None:
+            date_to = datetime.now().date()
         
         stmt = (
             select(
@@ -88,13 +93,16 @@ class ReportCRUD:
         )
 
     async def get_nutrition_report_data(
-            self, session: AsyncSession, date_from: date, date_to: date
+            self, session: AsyncSession, date_from: date = None, date_to: date = None
         ) -> NutritionReportResponse:
             """
             Отчет по питанию: общее кол-во выданных заказов и детальная разбивка по блюдам.
             """
-
             
+            if date_from is None:
+                date_from = datetime.now().date() - timedelta(days=7)
+            if date_to is None:
+                date_to = datetime.now().date()
             
             stmt_count = (
                 select(func.count(Order.id))
@@ -147,7 +155,12 @@ class ReportCRUD:
                 }
             )
 
-    async def get_attendance_report_data(self, session: AsyncSession, date_from: date, date_to: date):
+    async def get_attendance_report_data(self, session: AsyncSession, date_from: date = None, date_to: date = None):
+        
+        if date_from is None:
+            date_from = datetime.now().date() - timedelta(days=7)
+        if date_to is None:
+            date_to = datetime.now().date()
        
         stats_stmt = (
             select(
