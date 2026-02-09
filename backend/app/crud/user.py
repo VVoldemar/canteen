@@ -151,6 +151,7 @@ class UserCRUD:
                 .execution_options(synchronize_session="fetch")
             )
             await session.execute(stmt)
+            await session.commit()
             return 
         except Exception as e:
             logger.error(f"Balance update error: {e}")
