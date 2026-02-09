@@ -63,8 +63,7 @@ async def get_menu(
     menu_id: int, 
     session: AsyncSession = Depends(get_session)
     ):
-    return await menu_manager.get_by_id(session, menu_id) 
-
+    return await menu_manager.get_by_id(session, menu_id)
 
 @menu_router.patch(
     '/{menu_id}', 

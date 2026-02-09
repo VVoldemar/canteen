@@ -23,25 +23,27 @@ class MenuCRUD:
         stmt = select(self.model)
         result = await session.execute(stmt)
         return result.scalars()
-    
+
     async def get_by_id(self, session: AsyncSession, id: int) -> Menu:
-        """Get a menu by ID with items preloaded."""
+        """Get a menu by ID with items and dishes preloaded."""
         
         stmt = (
             select(self.model)
-            .options(selectinload(self.model.items))
+            .options(
+                selectinload(self.model.items).joinedload(MenuItem.dish)
+            )
             .where(self.model.id == id)
         )
-
+    
         result = await session.execute(stmt)
         menu = result.scalar_one_or_none()
-
+    
         if not menu:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Menu not found"
             )
-
+    
         return menu
     
     async def get_all_paginated(

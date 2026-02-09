@@ -20,6 +20,7 @@ users_router = APIRouter(prefix="/users", tags=["Users"])
 @users_router.get("/me", 
     summary="Информация о пользователе", 
     description="Получить информацию о текущем пользователе",
+    response_model=UserResponse,
     responses={
         200: {"model": UserResponse},
         401: {"model": ErrorResponse, "description": "Не авторизован"}

@@ -17,5 +17,5 @@ class Order(SqlAlchemyBase):
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.PAID, nullable=False)
 
     dishes: Mapped[List["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
-    orderer: Mapped["User"] = relationship(back_populates="orders")
-    # subscribed_user: Mapped["User"] = relationship(back_populates="subscription_order")
+    orderer: Mapped["User"] = relationship("User", back_populates="orders", overlaps="subscription_order,subscribed_user")
+    subscribed_user: Mapped["User"] = relationship("User", back_populates="subscription_order", overlaps="orderer,orders")
