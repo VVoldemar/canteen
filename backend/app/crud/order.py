@@ -148,12 +148,23 @@ class OrderCRUD:
         await session.commit()
         return order
 
-    async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
-        """Сотрудник выдает заказ."""
+    async def mark_prepared(self, session: AsyncSession, order_id: int) -> Order:
+        """Повар отмечает заказ готовым к выдаче."""
         order = await self.get_by_id(session, order_id)
         
-        if order.status in [OrderStatus.CANCELLED, OrderStatus.SERVED]:
-            raise HTTPException(status_code=409, detail=f"Order is already {order.status}")
+        if order.status != OrderStatus.PAID:
+            raise HTTPException(status_code=409, detail=f"Only paid orders can be marked as prepared")
+            
+        order.status = OrderStatus.READY
+        await session.commit()
+        return order
+
+    async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
+        """Ученик подтверждает получение заказа."""
+        order = await self.get_by_id(session, order_id)
+        
+        if order.status not in [OrderStatus.READY, OrderStatus.PAID]:
+            raise HTTPException(status_code=409, detail=f"Order must be ready or paid to be served")
             
         order.status = OrderStatus.SERVED
         order.completed_at = datetime.now() 

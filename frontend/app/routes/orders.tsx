@@ -47,12 +47,14 @@ export function meta({}: Route.MetaArgs) {
 
 const statusOptions: Array<{ label: string; value: OrderStatus }> = [
   { label: "Оплачен", value: "paid" },
+  { label: "Готов к выдаче", value: "prepared" },
   { label: "Выдан", value: "served" },
   { label: "Отменен", value: "cancelled" },
 ];
 
 const statusColor: Record<OrderStatus, string> = {
   paid: "blue",
+  prepared: "orange",
   served: "green",
   cancelled: "red",
 };
@@ -89,7 +91,7 @@ export default function OrdersPage() {
   const [dishesLoading, setDishesLoading] = useState(false);
   const [form] = Form.useForm<CreateOrderRequest>();
 
-  const canCreate = user?.role === "admin" || user?.role === "student";
+  const canCreate = user?.role === "admin";
   const canServe = user?.role === "admin" || user?.role === "cook";
   const canConfirm = user?.role === "admin" || user?.role === "student";
 
@@ -254,14 +256,14 @@ export default function OrdersPage() {
                 onClick={() =>
                   handleAction(
                     () => serveOrder(record.id),
-                    "Заказ отмечен как выданный",
+                    "Заказ готов к выдаче",
                   )
                 }
               >
                 Выдать
               </Button>
             )}
-            {record.status === "paid" && canConfirm && (
+            {record.status === "prepared" && canConfirm && (
               <Button
                 type="link"
                 onClick={() =>
