@@ -25,7 +25,7 @@ class CostsReportResponse(BaseModel):
     procurement_applications: int
     estimated_total_cost_kopecks: int
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, by_alias=True)
 
 
 class NutritionDishBreakdown(BaseModel):
@@ -36,11 +36,11 @@ class NutritionDishBreakdown(BaseModel):
 
 class NutritionReportResponse(BaseModel):
     from_: date = Field(alias="from")
-    to: date
+    to: date = Field(alias="to")
     served_orders: int
     dishes_breakdown: List[NutritionDishBreakdown]
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, by_alias=True)
 
 
 class DishPopularity(BaseModel):
@@ -59,4 +59,4 @@ class AttendanceReportResponse(BaseModel):
     
     popularity: List[DishPopularity] = Field(default_factory=list)
 
-    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True, by_alias=True)

@@ -247,6 +247,21 @@ export interface NutritionReportResponse {
   dishes_breakdown: NutritionDishBreakdown[];
 }
 
+export type ReportType = "payments" | "attendance" | "nutrirtion" | "full";
+
+export interface GenerateReportRequest {
+  report_type: ReportType;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface ReportResponse {
+  id: number;
+  report_type: string;
+  generated_at: string;
+  download_url: string;
+}
+
 export interface Notification {
   id: number;
   user_id?: number | null;

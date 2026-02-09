@@ -83,9 +83,9 @@ export const menuItems: MenuItem[] = [
     label: "Отчёты",
     roles: ["admin"],
   },
-  {
-    key: "/notifications",
-    icon: <BellOutlined />,
-    label: "Уведомления",
-  },
+  // {
+  //   key: "/notifications",
+  //   icon: <BellOutlined />,
+  //   label: "Уведомления",
+  // },
 ];

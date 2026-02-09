@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   App,
   Button,
   Card,
   DatePicker,
   Empty,
+  Select,
   Space,
-  Table,
   Typography,
+  Divider,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { DownloadOutlined, FileTextOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import type { Route } from "./+types/reports";
 import { ApiException } from "~/api/errors";
-import { getCostsReport, getNutritionReport } from "~/api/reports";
+import { generateReport, downloadReport } from "~/api/reports";
 import { useAuth } from "~/context/AuthContext";
-import type { NutritionDishBreakdown } from "~/types";
+import type { ReportType } from "~/types";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -24,18 +25,6 @@ export function meta({}: Route.MetaArgs) {
   return [{ title: "Отчёты — Школьная столовая" }];
 }
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("ru-RU");
-};
-
-const formatAmount = (value?: number | null) => {
-  if (typeof value !== "number") return "—";
-  return `${(value / 100).toFixed(2)} ₽`;
-};
-
 export default function ReportsPage() {
   const { user } = useAuth();
   const { message } = App.useApp();
@@ -43,62 +32,58 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState<
     [Dayjs | null, Dayjs | null] | null
   >(null);
-  const [loading, setLoading] = useState(false);
-  const [costs, setCosts] = useState<{
-    from: string;
-    to: string;
-    procurement_applications: number;
-    estimated_total_cost_kopecks: number;
-  } | null>(null);
-  const [nutrition, setNutrition] = useState<{
-    from: string;
-    to: string;
-    served_orders: number;
-    dishes_breakdown: NutritionDishBreakdown[];
+  const [reportType, setReportType] = useState<ReportType>("nutrirtion");
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [generatedReport, setGeneratedReport] = useState<{
+    id: number;
+    report_type: string;
+    generated_at: string;
+    download_url: string;
   } | null>(null);
 
-  const loadReports = useCallback(async () => {
-    setLoading(true);
-    const params = {
-      date_from: dateRange?.[0]?.format("YYYY-MM-DD"),
-      date_to: dateRange?.[1]?.format("YYYY-MM-DD"),
-    };
-
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
     try {
-      const [costsResponse, nutritionResponse] = await Promise.all([
-        getCostsReport(params),
-        getNutritionReport(params),
-      ]);
-      setCosts(costsResponse);
-      setNutrition(nutritionResponse);
+      const report = await generateReport({
+        report_type: reportType,
+        date_from: dateRange?.[0]?.format("YYYY-MM-DD"),
+        date_to: dateRange?.[1]?.format("YYYY-MM-DD"),
+      });
+      setGeneratedReport(report);
+      message.success("Отчёт успешно сгенерирован");
     } catch (error) {
       if (error instanceof ApiException) {
         message.error(error.error.message);
       } else {
-        message.error("Ошибка при загрузке отчётов");
+        message.error("Ошибка при генерации отчёта");
       }
     } finally {
-      setLoading(false);
+      setGeneratingReport(false);
     }
-  }, [dateRange, message]);
+  };
 
-  useEffect(() => {
-    if (user?.role === "admin") {
-      loadReports();
+  const handleDownloadReport = async () => {
+    if (!generatedReport) return;
+
+    try {
+      const blob = await downloadReport(generatedReport.download_url);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `report_${generatedReport.report_type}_${new Date(generatedReport.generated_at).toLocaleDateString()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      message.success("Отчёт скачан");
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else {
+        message.error("Ошибка при скачивании отчёта");
+      }
     }
-  }, [loadReports, user?.role]);
-
-  const breakdownColumns: ColumnsType<NutritionDishBreakdown> = [
-    {
-      title: "Блюдо",
-      dataIndex: "dish_name",
-    },
-    {
-      title: "Количество",
-      dataIndex: "quantity",
-      width: 160,
-    },
-  ];
+  };
 
   if (!user || user.role !== "admin") {
     return (
@@ -111,65 +96,82 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Title level={2} className="!mb-0">
-            Отчёты
-          </Title>
-          <Text type="secondary">Финансовые и продуктовые отчёты</Text>
-        </div>
-        <Space>
-          <RangePicker onChange={(value) => setDateRange(value)} />
-          <Button onClick={loadReports} loading={loading}>
-            Обновить
-          </Button>
+      <div>
+        <Title level={2} className="!mb-0">
+          Отчёты
+        </Title>
+        <Text type="secondary">Генерация и скачивание PDF-отчётов</Text>
+      </div>
+
+      <Card
+        title={
+          <Space>
+            <FileTextOutlined />
+            Генерация PDF-отчётов
+          </Space>
+        }
+      >
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <div>
+            <Text>
+              Выберите тип отчёта и период для генерации PDF-документа
+            </Text>
+          </div>
+          <Space size="middle" wrap>
+            <Select
+              value={reportType}
+              onChange={setReportType}
+              style={{ width: 200 }}
+              options={[
+                { label: "Отчёт по питанию", value: "nutrirtion" },
+                { label: "Отчёт по посещаемости", value: "attendance" },
+                { label: "Отчёт по платежам", value: "payments" },
+                { label: "Полный отчёт", value: "full" },
+              ]}
+            />
+            <RangePicker
+              value={dateRange}
+              onChange={(value) => setDateRange(value)}
+              placeholder={["Дата начала", "Дата окончания"]}
+            />
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={handleGenerateReport}
+              loading={generatingReport}
+            >
+              Сгенерировать отчёт
+            </Button>
+          </Space>
+
+          {generatedReport && (
+            <>
+              <Divider />
+              <Space direction="vertical">
+                <Text strong>Сгенерированный отчёт:</Text>
+                <Space>
+                  <Text>Тип: {generatedReport.report_type}</Text>
+                  <Text type="secondary">|</Text>
+                  <Text>
+                    Создан:{" "}
+                    {new Date(generatedReport.generated_at).toLocaleString(
+                      "ru-RU",
+                    )}
+                  </Text>
+                </Space>
+                <Button
+                  type="default"
+                  icon={<DownloadOutlined />}
+                  onClick={handleDownloadReport}
+                >
+                  Скачать PDF
+                </Button>
+              </Space>
+            </>
+          )}
         </Space>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Отчёт по затратам" loading={loading}>
-          {costs ? (
-            <Space direction="vertical" size="middle">
-              <Text>
-                Период: {formatDate(costs.from)} — {formatDate(costs.to)}
-              </Text>
-              <Text>
-                Заявок: <Text strong>{costs.procurement_applications}</Text>
-              </Text>
-              <Text>
-                Оценка затрат:{" "}
-                <Text strong>{formatAmount(costs.estimated_total_cost_kopecks)}</Text>
-              </Text>
-            </Space>
-          ) : (
-            <Text type="secondary">Нет данных</Text>
-          )}
-        </Card>
-
-        <Card title="Отчёт по питанию" loading={loading}>
-          {nutrition ? (
-            <Space direction="vertical" size="middle">
-              <Text>
-                Период: {formatDate(nutrition.from)} — {formatDate(nutrition.to)}
-              </Text>
-              <Text>
-                Выдано заказов: <Text strong>{nutrition.served_orders}</Text>
-              </Text>
-            </Space>
-          ) : (
-            <Text type="secondary">Нет данных</Text>
-          )}
-        </Card>
-      </div>
-
-      <Card title="Состав отчёта по питанию" loading={loading}>
-        <Table
-          rowKey={(record) => record.dish_id}
-          columns={breakdownColumns}
-          dataSource={nutrition?.dishes_breakdown || []}
-          pagination={false}
-        />
       </Card>
     </div>
   );
 }
+
