@@ -9,5 +9,5 @@ class BlacklistedToken(SqlAlchemyBase):
     __tablename__ = "blacklisted_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    jti: Mapped[str] = mapped_column(String(), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    jti: Mapped[str] = mapped_column(String(), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
