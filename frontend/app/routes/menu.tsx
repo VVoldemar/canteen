@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   App,
   Button,
@@ -24,7 +25,7 @@ import {
 } from "~/api/menu";
 import { getDishes } from "~/api/dishes";
 import { useAuth } from "~/context/AuthContext";
-import type { Dish, Menu, MenuDetail } from "~/types";
+import type { Dish, Menu } from "~/types";
 
 const { Title, Text } = Typography;
 
@@ -35,15 +36,13 @@ export function meta({}: Route.MetaArgs) {
 export default function MenuPage() {
   const { user } = useAuth();
   const { message } = App.useApp();
+  const navigate = useNavigate();
 
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Menu | null>(null);
-  const [detail, setDetail] = useState<MenuDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dishesLoading, setDishesLoading] = useState(false);
   const [form] = Form.useForm();
@@ -115,23 +114,7 @@ export default function MenuPage() {
     }
   };
 
-  const openDetailModal = async (record: Menu) => {
-    setDetailOpen(true);
-    setDetailLoading(true);
-    try {
-      const menuDetail = await getMenu(record.id);
-      setDetail(menuDetail);
-    } catch (error) {
-      if (error instanceof ApiException) {
-        message.error(error.error.message);
-      } else {
-        message.error("Не удалось загрузить меню");
-      }
-      setDetail(null);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+
 
   const handleSubmit = async () => {
     try {
@@ -190,7 +173,7 @@ export default function MenuPage() {
         key: "actions",
         render: (_, record) => (
           <Space>
-            <Button type="link" onClick={() => openDetailModal(record)}>
+            <Button type="link" onClick={() => navigate(`/menu/${record.id}`)}>
               Открыть
             </Button>
             {canManage && (
@@ -214,7 +197,7 @@ export default function MenuPage() {
         ),
       },
     ],
-    [canManage],
+    [canManage, navigate],
   );
 
   return (
@@ -274,37 +257,7 @@ export default function MenuPage() {
         </Form>
       </Modal>
 
-      <Modal
-        open={detailOpen}
-        title={detail?.name || "Меню"}
-        onCancel={() => setDetailOpen(false)}
-        footer={[
-          <Button key="close" onClick={() => setDetailOpen(false)}>
-            Закрыть
-          </Button>,
-        ]}
-      >
-        {detailLoading ? (
-          <Text>Загрузка...</Text>
-        ) : detail ? (
-          <div className="flex flex-col gap-2">
-            {detail.items.length === 0 ? (
-              <Text type="secondary">В меню пока нет блюд</Text>
-            ) : (
-              detail.items.map((dish) => (
-                <div key={dish.id} className="flex items-center gap-2">
-                  <Tag color="blue">{dish.name}</Tag>
-                  <Text type="secondary">
-                    {(dish.price / 100).toFixed(2)} ₽
-                  </Text>
-                </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <Text type="secondary">Меню не найдено</Text>
-        )}
-      </Modal>
+
     </div>
   );
 }

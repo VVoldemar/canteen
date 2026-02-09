@@ -13,6 +13,7 @@ export default [
   layout("routes/_app.tsx", [
     route("profile", "routes/profile.tsx"),
     route("menu", "routes/menu.tsx"),
+    route("menu/:menuId", "routes/menu.$menuId.tsx"),
     route("dishes", "routes/dishes.tsx"),
     route("orders", "routes/orders.tsx"),
     route("reviews", "routes/reviews.tsx"),

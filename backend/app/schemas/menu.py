@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.dish import DishResponse
 
@@ -14,9 +14,9 @@ class MenuResponse(BaseModel):
 class MenuDetailResponse(BaseModel):
     id: int
     name: Name
-    items: List[DishResponse]
+    items: List[DishResponse] = Field(validation_alias="dishes")
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class CreateMenuRequest(BaseModel):
