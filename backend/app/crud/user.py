@@ -12,7 +12,8 @@ from app.schemas.paginating import PaginationParams, PaginatedResponse
 
 from app.models.user import User
 from app.models.dish import Ingredient
-from app.core.enums import UserRole
+from app.models.order import Order 
+from app.core.enums import UserRole, OrderStatus
 
 from app.schemas.auth import RegisterRequest
 from app.schemas.subscription import SubscriptionResponse, PurchaseSubscriptionRequest
@@ -32,10 +33,7 @@ class UserCRUD:
         self.model = model
 
     async def get_by_email(self, session: AsyncSession, email: str) -> User:
-        """
-        Возвращает ORM модель.
-        """
-        stmt = select(self.model).where(self.model.email==email)
+        stmt = select(self.model).where(self.model.email == email)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
         
@@ -47,9 +45,6 @@ class UserCRUD:
         return user
 
     async def get_by_id(self, session: AsyncSession, id: int) -> User:
-        """
-        Возвращает ORM модель.
-        """
         stmt = select(self.model).where(self.model.id == id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -67,9 +62,6 @@ class UserCRUD:
         params: PaginationParams,
         role: Optional[UserRole] = None
     ) -> PaginatedResponse[UserResponse]:
-        """
-        Возвращает универсальную PaginatedResponse.
-        """
         query = select(self.model).order_by(self.model.id)
         
         if role:
@@ -93,7 +85,8 @@ class UserCRUD:
                 email=new_user.email,
                 patronymic=new_user.patronymic,
                 password=hashed_password,
-                balance=None,
+                balance=0, 
+                role=UserRole.STUDENT 
             )
             
             session.add(db_user)
@@ -144,23 +137,23 @@ class UserCRUD:
     async def update_balance(
         self,
         session: AsyncSession,
-        user: User,
+        user_id: int, 
         new_money: int,
     ) -> None:
+        """
+        Обновляет баланс.
+        """
         try:
-
             stmt = (
                 update(self.model)
-                .where(self.model.id==user.id)
-                .values(balance=user.balance + new_money)
+                .where(self.model.id == user_id)
+                .values(balance=self.model.balance + new_money) 
                 .execution_options(synchronize_session="fetch")
             )
-
-            result = await session.execute(stmt)
-            await session.commit()
-            await session.refresh(user)
+            await session.execute(stmt)
             return 
         except Exception as e:
+            logger.error(f"Balance update error: {e}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Не получилось обновить баланс!")
 
 
@@ -171,27 +164,48 @@ class UserCRUD:
         subscription_data: PurchaseSubscriptionRequest
     ) -> SubscriptionResponse:
         
+        stmt = select(Order).where(Order.id == subscription_data.id_order)
+        order_result = await session.execute(stmt)
+        order = order_result.scalar_one_or_none()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="This order belongs to another user")
+
+        if order.status != OrderStatus.PAID:
+            raise HTTPException(status_code=400, detail="Order is not paid")
+        
         user = await self.get_by_id(session, user_id)
         
         if user.banned:
             raise HTTPException(status_code=400, detail="Banned users cannot purchase subscriptions")
-        
+
         now = datetime.now()
         days_to_add = subscription_data.days
         
         if user.subscription_start and user.subscription_days:
-            end_date = user.subscription_start + timedelta(days=user.subscription_days)
-            if end_date > now:
+            current_end_date = user.subscription_start + timedelta(days=user.subscription_days)
+            if current_end_date > now:
                 user.subscription_days += days_to_add
             else:
+                
                 user.subscription_start = now
                 user.subscription_days = days_to_add
         else:
-            user.subscription_start = now
-            user.subscription_days = days_to_add
             
-        await session.commit()
-        await session.refresh(user)
+            user.subscription_start = now
+            user.subscription_days = days_to_add       
+        try: 
+            
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Subscription update error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update subscription")
         
         return self._calculate_subscription_response(user)
 
@@ -204,7 +218,7 @@ class UserCRUD:
         is_active = False
         days_remaining = 0
         
-        sub_start = user.subscription_start if user.subscription_start else datetime.now()
+        sub_start = user.subscription_start
         sub_days = user.subscription_days if user.subscription_days else 0
 
         if user.subscription_start and user.subscription_days:
@@ -236,6 +250,7 @@ class UserCRUD:
         return user.ingredient_allergies
 
     async def add_allergy(self, session: AsyncSession, user_id: int, ingredient_id: int) -> bool:
+        
         stmt = (
             select(self.model)
             .options(selectinload(self.model.ingredient_allergies))
@@ -244,12 +259,12 @@ class UserCRUD:
         user = (await session.execute(stmt)).scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-            
+        
         ingredient = await session.get(Ingredient, ingredient_id)
         if not ingredient:
             raise HTTPException(status_code=404, detail="Ingredient not found")
-            
-        if ingredient in user.ingredient_allergies:
+
+        if any(ing.id == ingredient_id for ing in user.ingredient_allergies):
             raise HTTPException(status_code=400, detail="Allergy already exists")
             
         user.ingredient_allergies.append(ingredient)
@@ -281,7 +296,9 @@ class UserCRUD:
     async def switch_ban(self, session: AsyncSession, user_id: int) -> bool:
         user = await self.get_by_id(session, user_id)
         user.banned = not user.banned
+        session.add(user) 
         await session.commit()
+        await session.refresh(user)
         return user.banned
 
 

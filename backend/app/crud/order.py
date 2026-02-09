@@ -7,8 +7,6 @@ from fastapi import HTTPException, status
 import logging
 
 from app.crud.paginating import paginate
-from app.crud.dish import dish_manager
-from app.crud.user import users_manager
 
 from app.models.order import Order
 from app.models.associations import OrderItem
@@ -16,7 +14,6 @@ from app.models.dish import Dish
 from app.models.user import User
 
 from app.core.enums import OrderStatus
-
 from app.schemas.order import CreateOrderRequest, OrderResponse
 from app.schemas.paginating import PaginationParams, PaginatedResponse
 
@@ -27,7 +24,7 @@ class OrderCRUD:
         self.model: Order = model
 
     async def get_by_id(self, session: AsyncSession, order_id: int) -> Order:
-        """Получить заказ по ID с информацией о блюдах."""
+        """Получить заказ по ID с подгрузкой блюд."""
         stmt = (
             select(self.model)
             .options(
@@ -52,14 +49,11 @@ class OrderCRUD:
         date_to: Optional[date] = None
     ) -> PaginatedResponse[OrderResponse]:
         """
-        Получить список заказов с пагинацией и фильтрами.
-        user_id здесь работает просто как фильтр, а не как проверка доступа.
+        Получить список заказов с фильтрацией и пагинацией.
         """
-        query = select(
-            self.model
-            ).options(
-                selectinload(self.model.dishes).selectinload(OrderItem.dish),
-            ).order_by(self.model.ordered_at.desc())
+        query = select(self.model).options(
+            selectinload(self.model.dishes).selectinload(OrderItem.dish),
+        ).order_by(self.model.ordered_at.desc())
 
         if user_id:
             query = query.where(self.model.user_id == user_id)
@@ -83,39 +77,47 @@ class OrderCRUD:
         user: User, 
         order_in: CreateOrderRequest
     ) -> Order:
-        """Создать новый заказ."""
+        """
+        Создать новый заказ.
+        """
         try:
-            cost = 0
-
-            for dish in order_in.dishes:
-                _dish: Dish = dish_manager.get_by_id(session, dish.dish_id)
-                cost += _dish.price * dish.quantity
-
-            if cost > user.balance:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough balance!")
-            
             if not order_in.dishes:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order must contain dishes")
+                raise HTTPException(status_code=400, detail="Order must contain dishes")
             
-            user_money = user.balance - cost
-            await users_manager.update_balance(session, user_money)
+            dish_ids = [item.dish_id for item in order_in.dishes]
+            stmt = select(Dish).where(Dish.id.in_(dish_ids))
+            result = await session.execute(stmt)
+            
+            found_dishes = {d.id: d for d in result.scalars().all()}
+            
+            if len(found_dishes) != len(set(dish_ids)):
+                missing_ids = set(dish_ids) - set(found_dishes.keys())
+                raise HTTPException(status_code=400, detail=f"Dishes not found: {missing_ids}")
+            
+            total_cost = 0
+            for item in order_in.dishes:
+                dish = found_dishes[item.dish_id]
+                total_cost += dish.price * item.quantity
 
+            
+            if user.balance < total_cost:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Not enough balance. Need {total_cost}, have {user.balance}"
+                )
+            user.balance -= total_cost
+            session.add(user) 
+
+            
             new_order = self.model(
                 user_id=user.id,
                 ordered_at=datetime.now(),
-                status=OrderStatus.PAID,
+                status=OrderStatus.PAID, 
                 completed_at=None
             )
             session.add(new_order)
-            await session.flush() 
-
-            dish_ids = [item.dish_id for item in order_in.dishes]
-            stmt = select(Dish).where(Dish.id.in_(dish_ids))
-            found_dishes = (await session.execute(stmt)).scalars().all()
+            await session.flush()
             
-            if len(found_dishes) != len(set(dish_ids)):
-                raise HTTPException(status_code=400, detail="One or more dishes not found")
-
             for item in order_in.dishes:
                 order_item = OrderItem(
                     order_id=new_order.id,
@@ -135,70 +137,59 @@ class OrderCRUD:
             logger.error(f"Create order error: {e}")
             raise HTTPException(status_code=500, detail="Failed to create order")
 
-    async def cancel_order_receipt(self, session: AsyncSession, order_id: int) -> Order:
-        """Отменить получения заказа без проверки владельца"""
-        order = await self.get_by_id(session, order_id)
-    
-        if order.completed_at is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Order is not confirmed yet"
-            )
-    
-        if order.status == OrderStatus.CANCELLED:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Cannot cancel receipt for cancelled order"
-            )
-        order.completed_at = None
-        await session.commit()
-        return order
-
-    async def cancel(self, session: AsyncSession, order_id: int) -> Order:
-        """Отмена заказа без проверки владельца."""
+    async def mark_ready(self, session: AsyncSession, order_id: int) -> Order:
+        """Повар отмечает, что заказ готов к выдаче."""
         order = await self.get_by_id(session, order_id)
         
-        if order.status in [OrderStatus.SERVED, OrderStatus.CANCELLED]:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Cannot cancel order with status {order.status.value}"
-            )
-        
-        order.status = OrderStatus.CANCELLED
+        if order.status != OrderStatus.PAID:
+             raise HTTPException(status_code=409, detail="Only PAID orders can be marked as READY")
+             
+        order.status = OrderStatus.READY
         await session.commit()
         return order
 
     async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
-        """Отметить заказ как выполненный (обслуженный)."""
+        """Сотрудник выдает заказ."""
         order = await self.get_by_id(session, order_id)
         
-        if order.status == OrderStatus.CANCELLED:
-            raise HTTPException(status_code=409, detail="Order is cancelled")
+        if order.status in [OrderStatus.CANCELLED, OrderStatus.SERVED]:
+            raise HTTPException(status_code=409, detail=f"Order is already {order.status}")
             
         order.status = OrderStatus.SERVED
+        order.completed_at = datetime.now() 
         await session.commit()
         return order
 
-    async def confirm_receipt(self, session: AsyncSession, order_id: int) -> Order:
-        """Подтверждение получения заказа без проверки владельца."""
+    async def cancel(self, session: AsyncSession, order_id: int) -> Order:
+        """
+        Отмена заказа с возвратом СРЕДСТВ.
+        """
         order = await self.get_by_id(session, order_id)
         
-        if order.completed_at is not None:
-             raise HTTPException(status_code=409, detail="Order already confirmed")
-             
-        order.completed_at = datetime.now()
+        if order.status == OrderStatus.SERVED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot cancel served order"
+            )
+        
+        if order.status == OrderStatus.CANCELLED:
+             raise HTTPException(status_code=409, detail="Order already cancelled")
+        
+        refund_amount = 0
+        for item in order.dishes:
+            refund_amount += item.dish.price * item.quantity
+
+        stmt = select(User).where(User.id == order.user_id)
+        user_result = await session.execute(stmt)
+        user = user_result.scalar_one()
+
+        user.balance += refund_amount
+        session.add(user)
+
+        
+        order.status = OrderStatus.CANCELLED
+        
         await session.commit()
         return order
-    
-
-    async def serve_receipt(self, session:AsyncSession, order_id: int) -> Order:
-        order = await self.get_by_id(session, order_id)
-        
-        if order.completed_at is not None:
-            order.status = OrderStatus.PAID
-            await session.commit()
-            return order
-        else:
-            raise HTTPException(status.HTTP_409_CONFLICT)
 
 orders_manager = OrderCRUD(Order)
