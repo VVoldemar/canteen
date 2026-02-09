@@ -7,6 +7,7 @@ import uvicorn
 import os
 from app.db.session import engine
 from app.models import SqlAlchemyBase 
+from app.crud.user import users_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

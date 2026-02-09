@@ -1,8 +1,6 @@
 from datetime import date, datetime, time
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, case
-
-
+from sqlalchemy import select, func, and_, case, distinct
 
 from app.models.order import Order
 from app.models.associations import OrderItem
@@ -11,7 +9,6 @@ from app.models.review import Review
 from app.models.user import User
 
 from app.core.enums import OrderStatus
-
 
 from app.schemas.statistic import (
     PaymentStatisticsResponse,
@@ -31,15 +28,14 @@ class StatisticCRUD:
     async def get_payment_statistics(
         self, session: AsyncSession, date_from: date, date_to: date
     ) -> PaymentStatisticsResponse:
-
         stmt_orders = (
             select(
-                func.count(Order.id).label("count"),
+                func.count(distinct(Order.id)).label("count"),
                 func.sum(Dish.price * OrderItem.quantity).label("total_amount")
             )
             .select_from(Order)
-            .join(Order.dishes)
-            .join(OrderItem.dish)
+            .join(OrderItem, Order.id == OrderItem.order_id)
+            .join(Dish, OrderItem.dish_id == Dish.id)
             .where(Order.status.in_([OrderStatus.PAID, OrderStatus.SERVED]))
         )
         stmt_orders = self._apply_date_filter(stmt_orders, Order.ordered_at, date_from, date_to)
@@ -58,7 +54,7 @@ class StatisticCRUD:
             avg_amount = int(total_order_amount / orders_count)
 
         return PaymentStatisticsResponse(
-            total_amount=total_order_amount, 
+            total_amount=int(total_order_amount),
             orders_count=orders_count,
             subscriptions_count=subscriptions_count,
             average_order_amount=avg_amount,
@@ -70,18 +66,21 @@ class StatisticCRUD:
     ) -> AttendanceStatisticsResponse:
         
 
-        stmt_base = select(Order.status).select_from(Order)
-        stmt_base = self._apply_date_filter(stmt_base, Order.ordered_at, date_from, date_to)
-        stmt_base = stmt_base.where(Order.status != OrderStatus.CANCELLED)
+        stmt_totals = (
+            select(
+                func.count(Order.id).label("total_paid"),
+                func.sum(case((Order.status == OrderStatus.SERVED, 1), else_=0)).label("total_served")
+            )
+            .where(Order.status != OrderStatus.CANCELLED)
+        )
+        stmt_totals = self._apply_date_filter(stmt_totals, Order.ordered_at, date_from, date_to)
         
-        result_all = (await session.execute(stmt_base)).scalars().all()
-        
-        total_paid = len(result_all)
-        total_served = len([s for s in result_all if s == OrderStatus.SERVED])
-        
+        result_totals = (await session.execute(stmt_totals)).one()
+        total_paid = result_totals.total_paid or 0
+        total_served = result_totals.total_served or 0        
         attendance_rate = 0.0
         if total_paid > 0:
-            attendance_rate = round((total_served / total_paid) * 100, 2)
+            attendance_rate = round(total_served / total_paid, 4)
 
         stmt_by_date = (
             select(
@@ -89,21 +88,16 @@ class StatisticCRUD:
                 func.count(Order.id).label("total"),
                 func.sum(case((Order.status == OrderStatus.SERVED, 1), else_=0)).label("served")
             )
-            .where(and_(
-                Order.ordered_at >= datetime.combine(date_from, time.min),
-                Order.ordered_at <= datetime.combine(date_to, time.max),
-                Order.status != OrderStatus.CANCELLED
-            ))
-            .group_by(func.date(Order.ordered_at))
-            .order_by("day")
+            .where(Order.status != OrderStatus.CANCELLED)
         )
+        stmt_by_date = self._apply_date_filter(stmt_by_date, Order.ordered_at, date_from, date_to)
+        stmt_by_date = stmt_by_date.group_by(func.date(Order.ordered_at)).order_by("day")
         
-        result = await session.execute(stmt_by_date)
-        by_date_rows = result.all()
+        result_daily = await session.execute(stmt_by_date)
+        by_date_rows = result_daily.all()
         
         by_date_list = []
         for row in by_date_rows:
-            # SQLite's date() function returns string in YYYY-MM-DD format
             date_value = date.fromisoformat(row.day) if isinstance(row.day, str) else row.day
             by_date_list.append(AttendanceStatisticsByDay(
                 date=date_value,
@@ -120,16 +114,15 @@ class StatisticCRUD:
 
     async def get_dish_statistics(
         self, session: AsyncSession, date_from: date, date_to: date
-    ) -> DishStatisticsResponse:
-        
+    ) -> DishStatisticsResponse:        
         stmt_sales = (
             select(
                 Dish,
-                func.count(OrderItem.dish_id).label("orders_count")
+                func.sum(OrderItem.quantity).label("orders_count")
             )
             .select_from(Dish)
-            .join(OrderItem)
-            .join(Order)
+            .join(OrderItem, Dish.id == OrderItem.dish_id)
+            .join(Order, OrderItem.order_id == Order.id)
             .where(Order.status != OrderStatus.CANCELLED)
         )
         stmt_sales = self._apply_date_filter(stmt_sales, Order.ordered_at, date_from, date_to)
@@ -149,16 +142,15 @@ class StatisticCRUD:
         stmt_reviews = stmt_reviews.group_by(Review.dish_id)
         
         reviews_result = (await session.execute(stmt_reviews)).all()
-        
         reviews_map = {r.dish_id: (r.review_count, r.avg_rating) for r in reviews_result}
         
         items = []
         for row in sales_result:
             dish_obj = row.Dish
-            orders_count = row.orders_count
+    
+            orders_count = int(row.orders_count) if row.orders_count else 0
             
             r_count, r_avg = reviews_map.get(dish_obj.id, (0, None))
-            
             avg_rating_val = round(float(r_avg), 1) if r_avg else None
 
             items.append(DishStatistic(
@@ -169,6 +161,5 @@ class StatisticCRUD:
             ))
             
         return DishStatisticsResponse(dishes=items)
-
 
 statistic_manager = StatisticCRUD()
