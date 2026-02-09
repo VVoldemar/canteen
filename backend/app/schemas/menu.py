@@ -1,0 +1,29 @@
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.dish import DishResponse
+
+from app.schemas.annotations import Name
+
+class MenuResponse(BaseModel):
+    id: int
+    name: Name
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class MenuDetailResponse(BaseModel):
+    id: int
+    name: Name
+    items: List[DishResponse] = Field(validation_alias="dishes")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class CreateMenuRequest(BaseModel):
+    name: Name
+    dish_ids: Optional[List[int]] = None
+
+
+class UpdateMenuRequest(BaseModel):
+    name: Optional[Name] = None
+    dish_ids: Optional[List[int]] = None
