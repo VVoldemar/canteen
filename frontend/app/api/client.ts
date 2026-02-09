@@ -18,6 +18,7 @@ export const getToken = (): string | null => {
 export const setToken = (token: string): void => {
   if (!isBrowser()) return;
   localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  window.dispatchEvent(new Event("tokenChange"));
 };
 
 export const getRefreshToken = (): string | null => {
@@ -39,6 +40,7 @@ export const removeTokens = (): void => {
   if (!isBrowser()) return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.dispatchEvent(new Event("tokenChange"));
 };
 
 export const removeToken = (): void => {
