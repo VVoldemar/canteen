@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body, Query
+import json
+import shutil
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 
 from typing import Annotated, Optional
- 
+import json
+import os
+from app.core.utils.generation import generate_unique_filename
+
 from app.core.security.auth import require_roles
 from app.core.enums import UserRole
 
@@ -29,23 +34,48 @@ async def get_dishes(
     return await dish_manager.get_all_paginated(session, params, search)
 
 
-@dishes_router.post('/', summary='Создать новое блюдо', description='',
-                    response_model=DishResponse,
-                    status_code=status.HTTP_201_CREATED,
-                    responses={
-                        201: {'model': DishResponse, 'description': 'Блюдо создано'},
-                        400: {'model': ErrorResponse, 'description': 'Некорректный запрос'},
-                        401: {'model': ErrorResponse, 'description': 'Не авторизован'},
-                        403: {'model': ErrorResponse, 'description': 'Доступ запрещен'}
-                    })
+@dishes_router.post('/', response_model=DishResponse, status_code=status.HTTP_201_CREATED)
 async def create_dish(
-                    dish_in: CreateDishRequest,
-                    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
-                    session: AsyncSession = Depends(get_session)
-                ):
-    
+    dish_data: str = Form(...),
+    image: Optional[UploadFile] = File(None),
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
+    session: AsyncSession = Depends(get_session)
+):
+    public_url = None  
+
     try:
-        return await dish_manager.create(session, dish_in)
+        try:
+            dish_in = CreateDishRequest.model_validate_json(dish_data)
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                detail=f"Invalid JSON: {e}"
+            )
+
+        if image:
+            if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+                raise HTTPException(status_code=400, detail="Allowed types: jpeg, png, jpg")
+            
+            unique_filename = generate_unique_filename(image.filename)
+            upload_dir = os.path.join("static", "dishes")
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            try:
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(image.file, buffer)
+            except Exception:
+                raise HTTPException(status_code=500, detail="Could not save file")
+            finally:
+                await image.close()
+
+            public_url = f"/static/dishes/{unique_filename}"
+
+        return await dish_manager.create(session, dish_in, image_url=public_url)
+
+    except HTTPException as http_ex:
+        raise http_ex
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,12 +108,44 @@ async def get_dish(
                     })
 async def update_dish(
                     dish_id: int, 
-                    update_data: UpdateDishRequest,
+                    dish_data: str = Form(...),
+                    image: Optional[UploadFile] = File(None),
                     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
                     session: AsyncSession = Depends(get_session)
                 ):
-    
-    return await dish_manager.update(session, dish_id, update_data)
+    unique_filename = None
+    if image:
+        if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+            raise HTTPException(status_code=400, detail="Allowed types: jpeg, png, jpg")
+        
+        unique_filename = generate_unique_filename(image.filename)
+        upload_dir = os.path.join("static", "dishes")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        try:
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+
+        except Exception:
+            raise HTTPException(status_code=500, detail="Could not save file")
+        finally:
+            await image.close()
+            
+    public_url = f"/static/dishes/{unique_filename}"
+        
+    try:
+        data_dict = json.loads(dish_data)
+
+        update_data = UpdateDishRequest(**data_dict)
+    except (json.JSONDecodeError, TypeError, ValidationError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+            detail=f"Ошибка валидации данных: {e}"
+        )
+
+    return await dish_manager.update(session, dish_id, update_data, public_url)
 
 
 @dishes_router.delete('/{dish_id}', summary='Удалить блюдо', description='Доступно только администраторам',
@@ -100,5 +162,5 @@ async def delete_dish(
                     session: AsyncSession = Depends(get_session)
                 ):
     
-    delete_dish_status = await dish_manager.delete(session, dish_id)
+    await dish_manager.delete(session, dish_id)
     return 

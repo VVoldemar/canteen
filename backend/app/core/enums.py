@@ -14,12 +14,13 @@ class Measures(str, Enum):
 
 class OrderStatus(str, Enum):
     PAID = "paid"       
-    SERVED = "served"   
+    READY = "prepared"
+    SERVED = "served"
     CANCELLED = "cancelled"
     
 
 class Reports(str, Enum):
     PAYMENT = "payments" 
     ATTEND = "attendance"
-    DISH = "dishes"
+    DISH = "nutrirtion"
     ALL = "full"

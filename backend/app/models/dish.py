@@ -26,6 +26,7 @@ class Dish(SqlAlchemyBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(), nullable=False)
     price: Mapped[int] = mapped_column(Integer(), nullable=False)
+    image_url: Mapped[str] = mapped_column(String(), nullable=True)
  
     ingredients: Mapped[List["DishIngredient"]] = relationship(back_populates="dish", cascade="all, delete-orphan")
     orders: Mapped[List["OrderItem"]] = relationship(back_populates="dish", cascade="all, delete-orphan")
