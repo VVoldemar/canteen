@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_, and_, cast, String, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Union
@@ -60,12 +60,44 @@ class UserCRUD:
         self,
         session: AsyncSession,
         params: PaginationParams,
-        role: Optional[UserRole] = None
+        role: Optional[UserRole] = None,
+        search: Optional[str] = None
     ) -> PaginatedResponse[UserResponse]:
         query = select(self.model).order_by(self.model.id)
         
         if role:
             query = query.where(self.model.role == role)
+        
+        if search:
+            search_term = search.strip()
+            if not search_term:
+                return await paginate(session, query, params)
+            
+            search_words = [word for word in search_term.split() if word]
+            
+            if search_words:
+                word_conditions = []
+                for word in search_words:
+                    word_lower = word.lower()
+                    word_upper = word.upper()
+                    word_title = word.title()
+                    
+                    conditions = [
+                        # by ID
+                        cast(self.model.id, String).like(f'%{word}%'),
+                    ]
+                    
+                    for text_field in [self.model.name, self.model.surname, func.coalesce(self.model.patronymic, '')]:
+                        conditions.extend([
+                            text_field.like(f'%{word}%'),
+                            text_field.like(f'%{word_lower}%'),
+                            text_field.like(f'%{word_upper}%'),
+                            text_field.like(f'%{word_title}%'),
+                        ])
+                    
+                    word_conditions.append(or_(*conditions))
+                # all words should be found (each at least in one field)
+                query = query.where(and_(*word_conditions))
 
         return await paginate(session, query, params)
 

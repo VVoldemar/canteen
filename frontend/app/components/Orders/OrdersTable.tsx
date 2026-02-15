@@ -4,6 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { Order, OrderStatus } from "~/types";
 import { statusColor, statusOptions } from "~/constants/orders";
 import { formatDateTime } from "~/utils/date";
+import { UserLink } from "~/components/UserLink";
 
 interface OrdersTableProps {
   items: Order[];
@@ -43,8 +44,9 @@ export function OrdersTable({
       },
       {
         title: "Пользователь",
-        dataIndex: "user_id",
+        dataIndex: "orderer",
         width: 140,
+        render: (orderer) => <UserLink user={orderer} />,
       },
       {
         title: "Статус",

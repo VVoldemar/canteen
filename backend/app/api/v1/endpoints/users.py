@@ -158,7 +158,7 @@ async def update_user_balance_admin(
 @users_router.get(
     "/",
     summary="Получить список пользователей",
-    description="Доступно только администраторам",
+    description="Доступно только администраторам. Поддерживает поиск по ID и ФИО (в любой последовательности)",
     response_model=PaginatedResponse[UserResponse],
     responses={
         200: {"model": PaginatedResponse[UserResponse]},
@@ -169,10 +169,11 @@ async def update_user_balance_admin(
 async def get_users(
     params: Annotated[PaginationParams, Depends()],
     role: Optional[str] = None,
+    search: Optional[str] = None,
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):  
-    return await users_manager.get_all_paginated(session, params, role)
+    return await users_manager.get_all_paginated(session, params, role, search)
 
 
 @users_router.get(

@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from app.core.enums import OrderStatus
 from app.schemas.dish import DishResponse
+from app.schemas.user import UserShortResponse
 
 class OrderResponse(BaseModel):
     id: int
     user_id: int
+    orderer: UserShortResponse
     ordered_at: datetime
     completed_at: Optional[datetime] = None
     status: OrderStatus
@@ -40,3 +42,4 @@ class OrderDishLink(BaseModel):
 
 class CreateOrderRequest(BaseModel):
     dishes: List[OrderDishLink]
+    user_id: Optional[int] = None

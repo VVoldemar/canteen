@@ -98,6 +98,7 @@ export interface UpdateMenuRequest {
 export interface Order {
   id: number;
   user_id: number;
+  orderer: UserShort;
   ordered_at: string;
   completed_at?: string | null;
   status: OrderStatus;
@@ -119,11 +120,13 @@ export interface OrderDishLink {
 
 export interface CreateOrderRequest {
   dishes: OrderDishLink[];
+  user_id?: number;
 }
 
 export interface Review {
   id: number;
   user_id: number;
+  user: UserShort;
   dish_id: number;
   rating?: number | null;
   content?: string | null;

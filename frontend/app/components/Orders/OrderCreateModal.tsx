@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { App, Button, Form, InputNumber, Modal, Select, Space, Typography } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { getDishes } from "~/api/dishes";
+import { getUsers } from "~/api/users";
 import { createOrder } from "~/api/orders";
 import { ApiException } from "~/api/errors";
-import type { CreateOrderRequest, Dish } from "~/types";
+import { useAuth } from "~/context/AuthContext";
+import type { CreateOrderRequest, Dish, User } from "~/types";
 
 const { Text } = Typography;
 
@@ -20,10 +22,16 @@ export function OrderCreateModal({
   onSuccess,
 }: OrderCreateModalProps) {
   const { message } = App.useApp();
+  const { user: currentUser } = useAuth();
   const [form] = Form.useForm<CreateOrderRequest>();
   const [creating, setCreating] = useState(false);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dishesLoading, setDishesLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+
+  const isAdmin = currentUser?.role === "admin";
 
   const loadDishes = useCallback(async () => {
     if (dishes.length > 0) return;
@@ -42,6 +50,37 @@ export function OrderCreateModal({
     }
   }, [dishes.length, message]);
 
+  const searchUsers = useCallback(async (search: string) => {
+    if (!isAdmin) return;
+    setUsersLoading(true);
+    try {
+      const response = await getUsers({ 
+        page: 1, 
+        limit: 50,
+        search: search || undefined
+      });
+      setUsers(response.items);
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else {
+        message.error("Не удалось загрузить пользователей");
+      }
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAdmin, message]);
+
+  useEffect(() => {
+    if (!isAdmin || !open) return;
+    
+    const timer = setTimeout(() => {
+      searchUsers(userSearchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [userSearchQuery, isAdmin, open, searchUsers]);
+
   useEffect(() => {
     if (open) {
       form.resetFields();
@@ -49,8 +88,12 @@ export function OrderCreateModal({
         { dish_id: undefined, quantity: undefined },
       ]);
       loadDishes();
+      if (isAdmin) {
+        setUserSearchQuery("");
+        searchUsers("");
+      }
     }
-  }, [open, form, loadDishes]);
+  }, [open, form, loadDishes, isAdmin, searchUsers]);
 
   const handleCreateOrder = async () => {
     try {
@@ -83,6 +126,35 @@ export function OrderCreateModal({
       width={720}
     >
       <Form form={form} layout="vertical">
+        {isAdmin && (
+          <Form.Item
+            name="user_id"
+            label="Пользователь"
+            rules={[
+              { required: true, message: "Выберите пользователя" },
+            ]}
+          >
+            <Select
+              placeholder="Начните вводить ID или ФИО для поиска"
+              loading={usersLoading}
+              showSearch={{
+                onSearch: setUserSearchQuery,
+                filterOption: false,
+              }}
+              onOpenChange={(open) => {
+                if (open) {
+                  setUserSearchQuery("");
+                }
+              }}
+              notFoundContent={usersLoading ? "Загрузка..." : "Ничего не найдено"}
+              options={users.map((user) => ({
+                label: `${user.surname} ${user.name}${user.patronymic ? ` ${user.patronymic}` : ''} (ID: ${user.id})`,
+                value: user.id,
+              }))}
+            />
+          </Form.Item>
+        )}
+        
         <Form.List
           name="dishes"
           rules={[

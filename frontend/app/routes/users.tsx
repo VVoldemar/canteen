@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   App,
   Button,
+  Input,
   Select,
   Space,
   Switch,
@@ -17,6 +18,7 @@ import type { Route } from "./+types/users";
 import { getUsers, updateUserAdmin, updateUserBalance } from "~/api/users";
 import { ApiException } from "~/api/errors";
 import { useAuth } from "~/context/AuthContext";
+import { UserLink } from "~/components/UserLink";
 import type { User, UserRole } from "~/types";
 
 const { Title, Text } = Typography;
@@ -57,6 +59,8 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [balanceInputs, setBalanceInputs] = useState<
     Record<number, number | undefined>
@@ -76,6 +80,14 @@ export default function UsersPage() {
     });
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -83,6 +95,7 @@ export default function UsersPage() {
         page,
         limit: pageSize,
         role: roleFilter === "all" ? undefined : roleFilter,
+        search: debouncedSearchQuery || undefined,
       });
       setUsers(response.items.map(normalizeUser));
       setTotal(response.total);
@@ -95,7 +108,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [message, page, pageSize, roleFilter]);
+  }, [message, page, pageSize, roleFilter, debouncedSearchQuery]);
 
   useEffect(() => {
     if (currentUser?.role === "admin") {
@@ -193,10 +206,16 @@ export default function UsersPage() {
       {
         title: "ФИО",
         dataIndex: "surname",
-        render: (_, record) =>
-          [record.surname, record.name, record.patronymic]
-            .filter(Boolean)
-            .join(" "),
+        render: (_, record) => (
+          <UserLink
+            user={{
+              id: record.id,
+              name: record.name,
+              surname: record.surname,
+              patronymic: record.patronymic,
+            }}
+          />
+        ),
       },
       {
         title: "Роль",
@@ -322,6 +341,17 @@ export default function UsersPage() {
           </Text>
         </div>
         <Space>
+          <Input.Search
+            placeholder="Поиск по ID или ФИО..."
+            allowClear
+            // enterButton
+            style={{ width: 300 }}
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+          />
           <Select
             value={roleFilter}
             onChange={(value) => {

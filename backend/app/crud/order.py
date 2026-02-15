@@ -53,6 +53,7 @@ class OrderCRUD:
         """
         query = select(self.model).options(
             selectinload(self.model.dishes).selectinload(OrderItem.dish),
+            selectinload(self.model.orderer),
         ).order_by(self.model.ordered_at.desc())
 
         if user_id:
