@@ -128,8 +128,7 @@ async def update_own_balance(
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession =Depends(get_session)
     ):
-    await users_manager.update_balance(session, user, summa)
-    return
+    await users_manager.update_balance(session, user.id, summa)
 
 
 @users_router.patch(
@@ -152,7 +151,7 @@ async def update_user_balance_admin(
     session: AsyncSession =Depends(get_session)
     ):
     change_user = await users_manager.get_by_id(session, user_id)
-    await users_manager.update_balance(session, change_user, summa)
+    await users_manager.update_balance(session, change_user.id, summa)
     return change_user
 
 
