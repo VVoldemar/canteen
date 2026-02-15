@@ -28,7 +28,8 @@ class OrderCRUD:
         stmt = (
             select(self.model)
             .options(
-                selectinload(self.model.dishes).joinedload(OrderItem.dish)
+                selectinload(self.model.dishes).selectinload(OrderItem.dish),
+                joinedload(self.model.orderer) 
             )
             .where(self.model.id == order_id)
         )
@@ -147,7 +148,7 @@ class OrderCRUD:
              
         order.status = OrderStatus.READY
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def mark_prepared(self, session: AsyncSession, order_id: int) -> Order:
         """Повар отмечает заказ готовым к выдаче."""
@@ -158,7 +159,7 @@ class OrderCRUD:
             
         order.status = OrderStatus.READY
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
         """Ученик подтверждает получение заказа."""
@@ -170,7 +171,7 @@ class OrderCRUD:
         order.status = OrderStatus.SERVED
         order.completed_at = datetime.now() 
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def cancel(self, session: AsyncSession, order_id: int) -> Order:
         """
@@ -202,6 +203,6 @@ class OrderCRUD:
         order.status = OrderStatus.CANCELLED
         
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
 orders_manager = OrderCRUD(Order)
