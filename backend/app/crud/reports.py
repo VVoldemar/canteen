@@ -199,7 +199,7 @@ class ReportCRUD:
         served = stats_result.served_count or 0
         cancelled = stats_result.cancelled_count or 0
         
-        ratio = round(cancelled / served, 2) if served > 0 else 0
+        ratio = round((cancelled / served) if served > cancelled else served / cancelled, 2) if served > 0 else 0
 
         return {
             "from": date_from,

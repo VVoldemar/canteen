@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional, Annotated
-from datetime import datetime, date
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,17 +135,3 @@ async def confirm_order(
     if user.role == UserRole.STUDENT and order.user_id != user.id:
         raise HTTPException(status_code=403, detail="Cannot confirm other user's order")
     return await orders_manager.mark_served(session, order_id)
-
-
-@orders_router.post('/{order_id}/serve', 
-    summary='Отметить заказ готовым к выдаче (для Повара)', 
-    description='Повар отмечает, что заказ готов к выдаче.',
-    response_model=OrderResponse
-)
-async def serve_order(
-    order_id: int, 
-    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
-    session: AsyncSession = Depends(get_session)
-):
-    
-    return await orders_manager.mark_prepared(session, order_id)

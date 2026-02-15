@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import List
+from typing import Optional
 from sqlalchemy import  DateTime, Enum, ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.enums import OrderStatus
+from app.core.enums import UserRole
 from app.models.base import SqlAlchemyBase
 
 
@@ -15,5 +15,6 @@ class Notification(SqlAlchemyBase):
     title: Mapped[str] = mapped_column()
     body: Mapped[str] = mapped_column()
     read: Mapped[bool] = mapped_column()
-    
+
+    role: Mapped[Optional[UserRole]] = mapped_column(Enum(UserRole, native_enum=False), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

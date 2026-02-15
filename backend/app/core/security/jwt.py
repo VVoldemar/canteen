@@ -1,6 +1,6 @@
 import jwt
 from fastapi import HTTPException, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from app.core.config import settings
@@ -11,7 +11,7 @@ def create_access_token(user_id: int, role: str):
         "sub": str(user_id),
         "role": role,
         "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=settings.access_ttl_minutes)
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.access_ttl_minutes)
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 

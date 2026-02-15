@@ -5,7 +5,7 @@ from typing import List
 from app.core.security.auth import require_roles
 from app.core.security.jwt import decode_token
 from app.core.enums import UserRole
-from app.core.websockets_manager import notification_manager
+from app.core.websockets_manager import websocket_manager
 
 from app.schemas.notification import NotificationResponse, CreateNotificationRequest 
 from app.schemas.validation import ErrorResponse, ValidationError
@@ -32,13 +32,13 @@ async def websocket_endpoint(
         await websocket.close(code=4003)
         return
     
-    await notification_manager.connect(user_id, websocket)
+    await websocket_manager.connect(user_id, websocket)
     
     try:
         while True:
             data = await websocket.receive_text()
     except WebSocketDisconnect:
-        notification_manager.disconnect(user_id, websocket)
+        websocket_manager.disconnect(user_id, websocket)
 
 
 @notifications_router.get('/', 
@@ -54,7 +54,7 @@ async def get_notifications(
                         session: AsyncSession = Depends(get_session)
                     ):
     
-    return await notifications_manager.get_all_by_user(session, user_id=user.id)
+    return await notifications_manager.get_all_by_user(session, user.id)
 
 
 @notifications_router.post('/', 
@@ -73,7 +73,7 @@ async def create_notification(
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK)),
     session: AsyncSession = Depends(get_session)
 ):
-    return await notifications_manager.create(session, notification_in)
+    return await notifications_manager.create_and_send(session, notification_in.user_id, notification_in.title, notification_in.body)
 
 
 @notifications_router.patch(
@@ -87,11 +87,9 @@ async def make_readed(
     session: AsyncSession = Depends(get_session)
 ):
     notification = await notifications_manager.get_by_id(session, notification_id)
-    
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-        
     if notification.user_id != user.id:
-        raise HTTPException(status_code=403, detail="It's not your notification")
+        raise HTTPException(status_code=403, detail="Not your notification")
 
-    return await notifications_manager.mark_as_read(session, notification_id)
+    return await notifications_manager.mark_as_read(session, notification_id, user.id)

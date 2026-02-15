@@ -1,8 +1,8 @@
 from datetime import date, datetime, time
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 import logging
 
@@ -13,7 +13,10 @@ from app.models.associations import OrderItem
 from app.models.dish import Dish
 from app.models.user import User
 
-from app.core.enums import OrderStatus
+from app.core.enums import OrderStatus, UserRole
+
+from app.crud.notification import notifications_manager
+
 from app.schemas.order import CreateOrderRequest, OrderResponse
 from app.schemas.paginating import PaginationParams, PaginatedResponse
 
@@ -125,7 +128,7 @@ class OrderCRUD:
                     quantity=item.quantity
                 )
                 session.add(order_item)
-            
+            await notifications_manager.create_and_send_for_role(session, UserRole.COOK, "Заказ сделан", "some")
             await session.commit()
             return await self.get_by_id(session, new_order.id)
 
@@ -145,17 +148,7 @@ class OrderCRUD:
              raise HTTPException(status_code=409, detail="Only PAID orders can be marked as READY")
              
         order.status = OrderStatus.READY
-        await session.commit()
-        return order
-
-    async def mark_prepared(self, session: AsyncSession, order_id: int) -> Order:
-        """Повар отмечает заказ готовым к выдаче."""
-        order = await self.get_by_id(session, order_id)
-        
-        if order.status != OrderStatus.PAID:
-            raise HTTPException(status_code=409, detail=f"Only paid orders can be marked as prepared")
-            
-        order.status = OrderStatus.READY
+        await notifications_manager.create_and_send(session, order.user_id, "Заказ приготовлен", "some")
         await session.commit()
         return order
 
