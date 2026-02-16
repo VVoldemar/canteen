@@ -8,6 +8,7 @@ from app.core.security.auth import require_roles
 from app.core.enums import UserRole, OrderStatus
 from app.api.deps import get_session
 from app.crud.order import orders_manager
+from app.crud.user import users_manager
 
 from app.schemas.validation import ErrorResponse, ValidationError
 from app.schemas.paginating import PaginationParams, PaginatedResponse
@@ -41,7 +42,7 @@ async def get_orders(
     )
 
 
-@orders_router.post('/', summary='Создать заказ', description='Оплата разового питания учеником', 
+@orders_router.post('/', summary='Создать заказ', description='Оплата разового питания учеником. Администратор может создать заказ от имени другого пользователя, указав user_id.', 
                     response_model=OrderDetailResponse,
                     status_code=status.HTTP_201_CREATED,
                     responses={
@@ -49,6 +50,7 @@ async def get_orders(
                         400: {'model': ErrorResponse, 'description': 'Недостаточно средств или некорректный запрос'},
                         409: {'model': ErrorResponse, 'description': 'Конфликт (операция недоступна в текущем состоянии)'},
                         401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+                        403: {'model': ErrorResponse, 'description': 'Доступ запрещен'},
                         422: {'model': ValidationError, 'description': 'Ошибка валидации'}
                     })
 async def create_order(
@@ -56,8 +58,19 @@ async def create_order(
     user=Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT, UserRole.COOK)),
     session: AsyncSession = Depends(get_session)
 ):
+    target_user_id = order_in.user_id
     
-    return await orders_manager.create(session, user, order_in)
+    if target_user_id is not None:
+        if user.role != UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins can create orders for other users"
+            )
+        target_user = await users_manager.get_by_id(session, target_user_id)
+    else:
+        target_user = user
+    
+    return await orders_manager.create(session, target_user, order_in)
 
 
 @orders_router.get('/{order_id}', summary='Получить информацию о заказе', description='', 

@@ -39,7 +39,7 @@ export function AppLayout() {
         collapsedWidth={80}
         width={240}
         onCollapse={(value) => setCollapsed(value)}
-        className="min-h-screen"
+        className="sticky! top-0 overflow-auto h-screen"
       >
         <div className="p-4 text-white">
           <Title

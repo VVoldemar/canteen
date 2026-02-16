@@ -31,7 +31,8 @@ class OrderCRUD:
         stmt = (
             select(self.model)
             .options(
-                selectinload(self.model.dishes).joinedload(OrderItem.dish)
+                selectinload(self.model.dishes).selectinload(OrderItem.dish),
+                joinedload(self.model.orderer) 
             )
             .where(self.model.id == order_id)
         )
@@ -56,6 +57,7 @@ class OrderCRUD:
         """
         query = select(self.model).options(
             selectinload(self.model.dishes).selectinload(OrderItem.dish),
+            selectinload(self.model.orderer),
         ).order_by(self.model.ordered_at.desc())
 
         if user_id:
@@ -150,7 +152,7 @@ class OrderCRUD:
         order.status = OrderStatus.READY
         await notifications_manager.create_and_send(session, order.user_id, "Заказ приготовлен", "some")
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
         """Ученик подтверждает получение заказа."""
@@ -162,7 +164,7 @@ class OrderCRUD:
         order.status = OrderStatus.SERVED
         order.completed_at = datetime.now() 
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def cancel(self, session: AsyncSession, order_id: int) -> Order:
         """
@@ -194,6 +196,6 @@ class OrderCRUD:
         order.status = OrderStatus.CANCELLED
         
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
 orders_manager = OrderCRUD(Order)

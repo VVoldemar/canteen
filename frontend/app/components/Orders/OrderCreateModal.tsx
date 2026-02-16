@@ -1,0 +1,227 @@
+import { useCallback, useEffect, useState } from "react";
+import { App, Button, Form, InputNumber, Modal, Select, Space, Typography } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { getDishes } from "~/api/dishes";
+import { getUsers } from "~/api/users";
+import { createOrder } from "~/api/orders";
+import { ApiException } from "~/api/errors";
+import { useAuth } from "~/context/AuthContext";
+import type { CreateOrderRequest, Dish, User } from "~/types";
+
+const { Text } = Typography;
+
+interface OrderCreateModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function OrderCreateModal({
+  open,
+  onClose,
+  onSuccess,
+}: OrderCreateModalProps) {
+  const { message } = App.useApp();
+  const { user: currentUser } = useAuth();
+  const [form] = Form.useForm<CreateOrderRequest>();
+  const [creating, setCreating] = useState(false);
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [dishesLoading, setDishesLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+
+  const isAdmin = currentUser?.role === "admin";
+
+  const loadDishes = useCallback(async () => {
+    if (dishes.length > 0) return;
+    setDishesLoading(true);
+    try {
+      const response = await getDishes({ page: 1, limit: 100 });
+      setDishes(response.items);
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else {
+        message.error("Не удалось загрузить блюда");
+      }
+    } finally {
+      setDishesLoading(false);
+    }
+  }, [dishes.length, message]);
+
+  const searchUsers = useCallback(async (search: string) => {
+    if (!isAdmin) return;
+    setUsersLoading(true);
+    try {
+      const response = await getUsers({ 
+        page: 1, 
+        limit: 50,
+        search: search || undefined
+      });
+      setUsers(response.items);
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else {
+        message.error("Не удалось загрузить пользователей");
+      }
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAdmin, message]);
+
+  useEffect(() => {
+    if (!isAdmin || !open) return;
+    
+    const timer = setTimeout(() => {
+      searchUsers(userSearchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [userSearchQuery, isAdmin, open, searchUsers]);
+
+  useEffect(() => {
+    if (open) {
+      form.resetFields();
+      form.setFieldValue("dishes", [
+        { dish_id: undefined, quantity: undefined },
+      ]);
+      loadDishes();
+      if (isAdmin) {
+        setUserSearchQuery("");
+        searchUsers("");
+      }
+    }
+  }, [open, form, loadDishes, isAdmin, searchUsers]);
+
+  const handleCreateOrder = async () => {
+    try {
+      const values = await form.validateFields();
+      setCreating(true);
+      await createOrder(values);
+      message.success("Заказ создан");
+      form.resetFields();
+      onSuccess();
+      onClose();
+    } catch (error) {
+      if (error instanceof ApiException) {
+        message.error(error.error.message);
+      } else if (error instanceof Error && error.message) {
+        message.error(error.message);
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title="Новый заказ"
+      onCancel={onClose}
+      onOk={handleCreateOrder}
+      okText="Создать"
+      confirmLoading={creating}
+      width={720}
+    >
+      <Form form={form} layout="vertical">
+        {isAdmin && (
+          <Form.Item
+            name="user_id"
+            label="Пользователь"
+            rules={[
+              { required: true, message: "Выберите пользователя" },
+            ]}
+          >
+            <Select
+              placeholder="Начните вводить ID или ФИО для поиска"
+              loading={usersLoading}
+              showSearch={{
+                onSearch: setUserSearchQuery,
+                filterOption: false,
+              }}
+              onOpenChange={(open) => {
+                if (open) {
+                  setUserSearchQuery("");
+                }
+              }}
+              notFoundContent={usersLoading ? "Загрузка..." : "Ничего не найдено"}
+              options={users.map((user) => ({
+                label: `${user.surname} ${user.name}${user.patronymic ? ` ${user.patronymic}` : ''} (ID: ${user.id})`,
+                value: user.id,
+              }))}
+            />
+          </Form.Item>
+        )}
+        
+        <Form.List
+          name="dishes"
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  return Promise.reject(
+                    new Error("Добавьте хотя бы одно блюдо"),
+                  );
+                }
+                return Promise.resolve();
+              },
+            },
+          ]}
+        >
+          {(fields, { add, remove }, { errors }) => (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <Text strong>Блюда</Text>
+                <Button
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  onClick={() => add()}
+                  disabled={dishesLoading}
+                >
+                  Добавить
+                </Button>
+              </div>
+              {fields.map((field) => (
+                <Space key={field.key} align="baseline">
+                  <Form.Item
+                    {...field}
+                    name={[field.name, "dish_id"]}
+                    rules={[
+                      { required: true, message: "Выберите блюдо" },
+                    ]}
+                  >
+                    <Select
+                      placeholder="Блюдо"
+                      loading={dishesLoading}
+                      options={dishes.map((dish) => ({
+                        label: dish.name,
+                        value: dish.id,
+                      }))}
+                      style={{ width: 260 }}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    {...field}
+                    name={[field.name, "quantity"]}
+                    rules={[
+                      { required: true, message: "Введите количество" },
+                    ]}
+                  >
+                    <InputNumber min={1} placeholder="Кол-во" />
+                  </Form.Item>
+                  <Button
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(field.name)}
+                  />
+                </Space>
+              ))}
+              <Form.ErrorList errors={errors} />
+            </div>
+          )}
+        </Form.List>
+      </Form>
+    </Modal>
+  );
+}

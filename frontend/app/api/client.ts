@@ -10,6 +10,15 @@ const REFRESH_TOKEN_KEY = "refresh_token";
 
 const isBrowser = () => typeof window !== "undefined";
 
+export const getStaticUrl = (path: string | null | undefined): string => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+
 export const getToken = (): string | null => {
   if (!isBrowser()) return null;
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -93,6 +102,11 @@ apiClient.interceptors.request.use((config) => {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
+  
   return config;
 });
 

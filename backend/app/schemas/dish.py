@@ -68,5 +68,5 @@ class CreateDishRequest(BaseModel):
 class UpdateDishRequest(BaseModel):
     name: Optional[Name] = None
     price: Optional[Price] = None
-
+    image_url: Optional[str] = None
     ingredients: Optional[List[DishIngredientLink]] = None

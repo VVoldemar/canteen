@@ -20,6 +20,7 @@ import { ApiException } from "~/api/errors";
 import { createReview, deleteReview, getReviews, updateReview } from "~/api/reviews";
 import { getDishes } from "~/api/dishes";
 import { useAuth } from "~/context/AuthContext";
+import { UserLink } from "~/components/UserLink";
 import type {
   CreateReviewRequest,
   Dish,
@@ -204,8 +205,9 @@ export default function ReviewsPage() {
       },
       {
         title: "Автор",
-        dataIndex: "user_id",
+        dataIndex: "user",
         width: 120,
+        render: (user) => <UserLink user={user} />,
       },
       {
         title: "Дата",

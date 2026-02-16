@@ -2,6 +2,7 @@ from typing import Optional, List, Union
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 import logging
@@ -43,7 +44,9 @@ class ReviewCRUD:
         dish_id filter is required to get reviews for a specific dish,
         but optional if we want to see "all recent reviews".
         """
-        query = select(self.model).order_by(self.model.datetime.desc())
+        query = select(self.model).options(
+            selectinload(self.model.user),
+        ).order_by(self.model.datetime.desc())
 
         if dish_id:
             query = query.where(self.model.dish_id == dish_id)

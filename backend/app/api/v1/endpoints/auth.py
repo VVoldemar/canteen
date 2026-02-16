@@ -87,7 +87,7 @@ async def login_user(
                     422: {'model': ValidationError, 'description': 'Ошибка валидации'},
                 })
 async def refresh_token(
-                    refresh_token: str,
+                    refresh_token: str = Body(embed=True),
                     session: AsyncSession = Depends(get_session)
                 ):
 
