@@ -20,6 +20,7 @@ export function useNotifications(isAuthenticated: boolean) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const notificationIdsRef = useRef<Set<number>>(new Set());
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -31,8 +32,8 @@ export function useNotifications(isAuthenticated: boolean) {
       ]);
       setNotifications(items);
       setUnreadCount(count);
+      notificationIdsRef.current = new Set(items.map((n) => n.id));
     } catch {
-      // ignore — user may have logged out
     } finally {
       setLoading(false);
     }
@@ -46,7 +47,6 @@ export function useNotifications(isAuthenticated: boolean) {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch {
-      // ignore
     }
   }, []);
 
@@ -56,16 +56,13 @@ export function useNotifications(isAuthenticated: boolean) {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch {
-      // ignore
     }
   }, []);
 
-  // WebSocket connection
   const connectWebSocket = useCallback(() => {
     const token = getToken();
     if (!token || !isAuthenticated) return;
 
-    // Close existing connection
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -90,23 +87,21 @@ export function useNotifications(isAuthenticated: boolean) {
             read: data.read ?? false,
             created_at: data.created_at,
           };
-          setNotifications((prev) => {
-            // Prevent duplicates
-            if (prev.some((n) => n.id === notification.id)) {
-              return prev;
-            }
-            return [notification, ...prev];
-          });
+          
+          if (notificationIdsRef.current.has(notification.id)) {
+            return;
+          }
+          
+          notificationIdsRef.current.add(notification.id);
+          setNotifications((prev) => [notification, ...prev]);
           setUnreadCount((prev) => prev + 1);
         }
       } catch {
-        // ignore malformed messages
       }
     };
 
     ws.onclose = (event) => {
       wsRef.current = null;
-      // Don't reconnect on intentional close (4003 = auth error)
       if (event.code === 4003) return;
 
       if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -118,18 +113,16 @@ export function useNotifications(isAuthenticated: boolean) {
       }
     };
 
-    ws.onerror = () => {
-      // onclose will fire after this
-    };
+    ws.onerror = () => {};
 
     wsRef.current = ws;
   }, [isAuthenticated]);
 
-  // Initial load & WebSocket setup
   useEffect(() => {
     if (!isAuthenticated) {
       setNotifications([]);
       setUnreadCount(0);
+      notificationIdsRef.current.clear();
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

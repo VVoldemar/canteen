@@ -189,6 +189,17 @@ class OrderCRUD:
             
         order.status = OrderStatus.READY
         await session.commit()
+        
+        try:
+            notification = CreateNotificationRequest(
+                user_id=order.user_id,
+                title="Заказ готов!",
+                body=f"Ваш заказ #{order.id} готов к выдаче. Приятного аппетита!"
+            )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send order ready notification: {e}")
+        
         return await self.get_by_id(session, order_id)
 
     async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
