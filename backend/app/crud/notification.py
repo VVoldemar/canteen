@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, desc
+from sqlalchemy import select, update, desc, or_
 from app.models.notification import Notification
 
 from app.core.websockets_manager import websocket_manager
@@ -12,7 +12,6 @@ class NotificationCRUD:
         self.model = model
 
     async def create_and_send(self, session: AsyncSession, user_id: int, title: str, body: str):
-        """Метод, используемый в тестах и OrderCRUD"""
         try:
             db_obj = self.model(
                 user_id=user_id,
@@ -68,8 +67,8 @@ class NotificationCRUD:
         await session.commit()
         return db_obj
 
-    async def get_all_by_user(self, session: AsyncSession, user_id: int):
-        stmt = select(self.model).where(self.model.user_id == user_id).order_by(desc(self.model.created_at))
+    async def get_all_by_user(self, session: AsyncSession, user_id: int, user_role: UserRole):
+        stmt = select(self.model).where(or_(self.model.user_id == user_id, self.model.role == user_role)).order_by(desc(self.model.created_at))
         result = await session.execute(stmt)
         return result.scalars().all()
     

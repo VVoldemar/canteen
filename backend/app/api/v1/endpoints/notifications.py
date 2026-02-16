@@ -54,7 +54,7 @@ async def get_notifications(
                         session: AsyncSession = Depends(get_session)
                     ):
     
-    return await notifications_manager.get_all_by_user(session, user.id)
+    return await notifications_manager.get_all_by_user(session, user.id, user.role)
 
 
 @notifications_router.post('/', 
