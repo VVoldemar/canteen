@@ -191,6 +191,18 @@ export interface Subscription {
 
 export interface PurchaseSubscriptionRequest {
   days: number;
+  id_order: number;
+}
+
+export interface PurchaseSubscriptionResponse {
+  subscription: Subscription;
+  created_orders: number;
+  total_cost: number;
+}
+
+export interface CancelSubscriptionResponse {
+  refunded: number;
+  cancelled_orders: number;
 }
 
 export interface Period {

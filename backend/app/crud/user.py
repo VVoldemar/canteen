@@ -12,11 +12,12 @@ from app.schemas.paginating import PaginationParams, PaginatedResponse
 
 from app.models.user import User
 from app.models.dish import Ingredient
-from app.models.order import Order 
+from app.models.order import Order
+from app.models.associations import OrderItem
 from app.core.enums import UserRole, OrderStatus
 
 from app.schemas.auth import RegisterRequest
-from app.schemas.subscription import SubscriptionResponse, PurchaseSubscriptionRequest
+from app.schemas.subscription import SubscriptionResponse, PurchaseSubscriptionRequest, PurchaseSubscriptionResponse, CancelSubscriptionResponse
 from app.schemas.user import (
     UserResponse, 
     UpdateUserRequest, 
@@ -195,52 +196,164 @@ class UserCRUD:
         session: AsyncSession, 
         user_id: int, 
         subscription_data: PurchaseSubscriptionRequest
-    ) -> SubscriptionResponse:
+    ) -> PurchaseSubscriptionResponse:
+        """Purchase a subscription based on an existing order template.
         
-        stmt = select(Order).where(Order.id == subscription_data.id_order)
+        Creates identical orders for N days ahead, deducting the total cost from user balance.
+        """
+        # Get the template order with its dishes
+        stmt = (
+            select(Order)
+            .options(selectinload(Order.dishes).selectinload(OrderItem.dish))
+            .where(Order.id == subscription_data.id_order)
+        )
         order_result = await session.execute(stmt)
-        order = order_result.scalar_one_or_none()
+        template_order = order_result.scalar_one_or_none()
 
-        if not order:
-            raise HTTPException(status_code=404, detail="Order not found")
+        if not template_order:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
 
-        if order.user_id != user_id:
-            raise HTTPException(status_code=403, detail="This order belongs to another user")
+        if template_order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Этот заказ принадлежит другому пользователю")
 
-        if order.status != OrderStatus.PAID:
-            raise HTTPException(status_code=400, detail="Order is not paid")
+        if template_order.status not in (OrderStatus.PAID, OrderStatus.READY, OrderStatus.SERVED):
+            raise HTTPException(status_code=400, detail="Можно использовать только оплаченные или выданные заказы")
+
+        if not template_order.dishes:
+            raise HTTPException(status_code=400, detail="В заказе-шаблоне нет блюд")
         
         user = await self.get_by_id(session, user_id)
         
         if user.banned:
-            raise HTTPException(status_code=400, detail="Banned users cannot purchase subscriptions")
+            raise HTTPException(status_code=400, detail="Заблокированные пользователи не могут покупать абонементы")
 
-        now = datetime.now()
-        days_to_add = subscription_data.days
-        
-        if user.subscription_start and user.subscription_days:
-            current_end_date = user.subscription_start + timedelta(days=user.subscription_days)
-            if current_end_date > now:
-                user.subscription_days += days_to_add
-            else:
-                
-                user.subscription_start = now
-                user.subscription_days = days_to_add
-        else:
-            
+        sub_resp = self._calculate_subscription_response(user)
+        if sub_resp.is_active:
+            raise HTTPException(status_code=400, detail="У вас уже есть активный абонемент. Отмените текущий, чтобы оформить новый")
+
+        order_cost = 0
+        for item in template_order.dishes:
+            order_cost += item.dish.price * item.quantity
+
+        days = subscription_data.days
+        total_cost = order_cost * days
+
+        if user.balance < total_cost:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Недостаточно средств. Нужно {total_cost}, на балансе {user.balance}"
+            )
+
+        try:
+            user.balance -= total_cost
+
+            now = datetime.now()
+            created_orders_count = 0
+            day_offset = 0
+            weekdays_scheduled = 0
+
+            while weekdays_scheduled < days:
+                day_offset += 1
+                order_date = now + timedelta(days=day_offset)
+                # skip Saturday (5) and Sunday (6)
+                if order_date.weekday() in (5, 6):
+                    continue
+
+                new_order = Order(
+                    user_id=user_id,
+                    ordered_at=order_date,
+                    status=OrderStatus.PAID,
+                    completed_at=None
+                )
+                session.add(new_order)
+                await session.flush()
+
+                for item in template_order.dishes:
+                    order_item = OrderItem(
+                        order_id=new_order.id,
+                        dish_id=item.dish_id,
+                        quantity=item.quantity
+                    )
+                    session.add(order_item)
+
+                weekdays_scheduled += 1
+                created_orders_count += 1
+
             user.subscription_start = now
-            user.subscription_days = days_to_add       
-        try: 
-            
+            user.subscription_days = day_offset
+
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+
+            return PurchaseSubscriptionResponse(
+                subscription=self._calculate_subscription_response(user),
+                created_orders=created_orders_count,
+                total_cost=total_cost
+            )
+
+        except HTTPException:
+            await session.rollback()
+            raise
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Subscription purchase error: {e}")
+            raise HTTPException(status_code=500, detail="Не удалось оформить абонемент")
+
+    async def cancel_subscription(
+        self,
+        session: AsyncSession,
+        user_id: int,
+    ) -> CancelSubscriptionResponse:
+        """Cancel active subscription. Refund cost of future orders (from tomorrow onwards) and cancel them."""
+        user = await self.get_by_id(session, user_id)
+        sub = self._calculate_subscription_response(user)
+
+        if not sub.is_active:
+            raise HTTPException(status_code=400, detail="У вас нет активного абонемента")
+
+        tomorrow_start = datetime.combine(
+            (datetime.now() + timedelta(days=1)).date(),
+            datetime.min.time(),
+        )
+        stmt = (
+            select(Order)
+            .options(selectinload(Order.dishes).selectinload(OrderItem.dish))
+            .where(
+                Order.user_id == user_id,
+                Order.status == OrderStatus.PAID,
+                Order.ordered_at >= tomorrow_start,
+            )
+        )
+        result = await session.execute(stmt)
+        future_orders = result.scalars().all()
+
+        refund_total = 0
+        cancelled_count = 0
+
+        for order in future_orders:
+            order_cost = sum(item.dish.price * item.quantity for item in order.dishes)
+            refund_total += order_cost
+            order.status = OrderStatus.CANCELLED
+            cancelled_count += 1
+
+        user.balance += refund_total
+        user.subscription_start = None
+        user.subscription_days = 0
+
+        try:
             session.add(user)
             await session.commit()
             await session.refresh(user)
         except Exception as e:
             await session.rollback()
-            logger.error(f"Subscription update error: {e}")
-            raise HTTPException(status_code=500, detail="Failed to update subscription")
-        
-        return self._calculate_subscription_response(user)
+            logger.error(f"Subscription cancel error: {e}")
+            raise HTTPException(status_code=500, detail="Не удалось отменить абонемент")
+
+        return CancelSubscriptionResponse(
+            refunded=refund_total,
+            cancelled_orders=cancelled_count,
+        )
 
     async def get_subscription_info(self, session: AsyncSession, user_id: int) -> SubscriptionResponse:
         user = await self.get_by_id(session, user_id)

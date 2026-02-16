@@ -1,11 +1,11 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
 
 
 class PurchaseSubscriptionRequest(BaseModel):
-    days: int = Field(gt=0)
-    id_order: Optional[int] = None
+    days: int = Field(gt=0, le=90)
+    id_order: int = Field(description="ID заказа-шаблона для абонемента")
 
 
 class SubscriptionResponse(BaseModel):
@@ -16,3 +16,14 @@ class SubscriptionResponse(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PurchaseSubscriptionResponse(BaseModel):
+    subscription: SubscriptionResponse
+    created_orders: int
+    total_cost: int
+
+
+class CancelSubscriptionResponse(BaseModel):
+    refunded: int
+    cancelled_orders: int
