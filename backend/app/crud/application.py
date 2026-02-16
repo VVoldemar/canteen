@@ -7,9 +7,11 @@ from fastapi import HTTPException, status
 import logging
 
 from app.crud.paginating import paginate
+from app.crud.notification import notifications_manager
 from app.schemas.paginating import PaginationParams, PaginatedResponse
 from app.core.enums import OrderStatus
 
+from app.models.user import User
 from app.models.application import Application
 from app.models.associations import ApplicationItem
 from app.models.dish import Ingredient
@@ -17,6 +19,9 @@ from app.schemas.application import (
     CreateApplicationRequest, 
     ApplicationResponse
 )
+from app.schemas.notification import CreateNotificationRequest
+
+from app.core.enums import UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +107,25 @@ class ApplicationCRUD:
             
             await session.commit()
             
+            try:
+                               
+                admins_stmt = select(User).where(User.role == UserRole.ADMIN)
+                admins_result = await session.execute(admins_stmt)
+                admins = admins_result.scalars().all()
+                
+                applicant = await session.get(User, user_id)
+                applicant_name = f"{applicant.name} {applicant.surname}" if applicant else "Пользователь"
+                
+                for admin in admins:
+                    notification = CreateNotificationRequest(
+                        user_id=admin.id,
+                        title="Новая заявка на закупку",
+                        body=f"Повар {applicant_name} создал заявку #{new_application.id} на закупку продуктов"
+                    )
+                    await notifications_manager.create(session, notification)
+            except Exception as e:
+                logger.warning(f"Failed to send notification to admins: {e}")
+            
             return await self.get_by_id(session, new_application.id)
 
         except HTTPException:
@@ -127,6 +151,17 @@ class ApplicationCRUD:
         
         application.status = OrderStatus.SERVED
         await session.commit()
+        
+        try:
+            notification = CreateNotificationRequest(
+                user_id=application.user_id,
+                title="Заявка одобрена",
+                body=f"Ваша заявка на закупку #{application.id} была одобрена администратором."
+            )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send application approval notification: {e}")
+        
         return application
 
     async def reject(
@@ -151,6 +186,18 @@ class ApplicationCRUD:
         application.rejection_reason = reason
             
         await session.commit()
+        
+        try:
+            rejection_text = f" Причина: {reason}" if reason else ""
+            notification = CreateNotificationRequest(
+                user_id=application.user_id,
+                title="Заявка отклонена",
+                body=f"Ваша заявка на закупку #{application.id} была отклонена.{rejection_text}"
+            )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send application rejection notification: {e}")
+        
         return application
 
 applications_manager = ApplicationCRUD(Application)

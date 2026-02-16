@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 import logging
 
 from app.crud.paginating import paginate
-from app.schemas.paginating import PaginationParams, PaginatedResponse
+from app.crud.notification import notifications_manager
 
 from app.models.user import User
 from app.models.dish import Ingredient
@@ -16,6 +16,7 @@ from app.models.order import Order
 from app.models.associations import OrderItem
 from app.core.enums import UserRole, OrderStatus
 
+from app.schemas.paginating import PaginationParams, PaginatedResponse
 from app.schemas.auth import RegisterRequest
 from app.schemas.subscription import SubscriptionResponse, PurchaseSubscriptionRequest, PurchaseSubscriptionResponse, CancelSubscriptionResponse
 from app.schemas.user import (
@@ -23,6 +24,7 @@ from app.schemas.user import (
     UpdateUserRequest, 
     AdminUpdateUserRequest,
 )
+from app.schemas.notification import CreateNotificationRequest
 
 from app.core.security.password import hash_password
 
@@ -145,6 +147,10 @@ class UserCRUD:
         
         if not update_data:
             return await self.get_by_id(session, id)
+        
+        old_user = None
+        if 'role' in update_data:
+            old_user = await self.get_by_id(session, id)
             
         try:
             stmt = (
@@ -160,7 +166,28 @@ class UserCRUD:
                 raise HTTPException(status_code=404, detail="User not found")
             
             await session.commit()
-            return await self.get_by_id(session, id)
+            updated_user = await self.get_by_id(session, id)
+            
+            if old_user and old_user.role != updated_user.role:
+                try:
+                    role_names = {
+                        UserRole.ADMIN: "администратора",
+                        UserRole.COOK: "повара",
+                        UserRole.STUDENT: "студента"
+                    }
+                    
+                    new_role_name = role_names.get(updated_user.role, updated_user.role.value)
+                    
+                    notification = CreateNotificationRequest(
+                        user_id=updated_user.id,
+                        title="Изменена роль",
+                        body=f"Ваша роль была изменена на {new_role_name}"
+                    )
+                    await notifications_manager.create(session, notification)
+                except Exception as e:
+                    logger.warning(f"Failed to send role change notification: {e}")
+            
+            return updated_user
             
         except IntegrityError:
             await session.rollback()
@@ -185,6 +212,18 @@ class UserCRUD:
             )
             await session.execute(stmt)
             await session.commit()
+            
+            if new_money > 0:
+                try:
+                    notification = CreateNotificationRequest(
+                        user_id=user_id,
+                        title="Баланс пополнен",
+                        body=f"Ваш баланс пополнен на {new_money} руб."
+                    )
+                    await notifications_manager.create(session, notification)
+                except Exception as e:
+                    logger.warning(f"Failed to send balance update notification: {e}")
+            
             return 
         except Exception as e:
             logger.error(f"Balance update error: {e}")
@@ -441,10 +480,29 @@ class UserCRUD:
 
     async def switch_ban(self, session: AsyncSession, user_id: int) -> bool:
         user = await self.get_by_id(session, user_id)
+        was_banned = user.banned
         user.banned = not user.banned
         session.add(user) 
         await session.commit()
         await session.refresh(user)
+        
+        try:
+            if user.banned:
+                notification = CreateNotificationRequest(
+                    user_id=user.id,
+                    title="Аккаунт заблокирован",
+                    body="Ваш аккаунт был заблокирован"
+                )
+            else:
+                notification = CreateNotificationRequest(
+                    user_id=user.id,
+                    title="Аккаунт разблокирован",
+                    body="Ваш аккаунт был разблокирован"
+                )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send ban status notification: {e}")
+        
         return user.banned
 
 
