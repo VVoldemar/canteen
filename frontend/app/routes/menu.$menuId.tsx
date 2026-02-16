@@ -17,6 +17,7 @@ import { HomeOutlined, BookOutlined, ShoppingCartOutlined } from "@ant-design/ic
 import type { Route } from "./+types/menu.$menuId";
 import { ApiException } from "~/api/errors";
 import { getMenu } from "~/api/menu";
+import { getStaticUrl } from "~/api/client";
 import type { MenuDetail } from "~/types";
 import { useCart } from "~/context/CartContext";
 import { CartButton } from "~/components/Cart";
@@ -125,7 +126,7 @@ export default function MenuDetailPage({ params }: Route.ComponentProps) {
                   <div style={{ height: 200, overflow: "hidden", background: "#f0f0f0" }}>
                     <Image
                       alt={dish.name}
-                      src={dish.image_url || DISH_PLACEHOLDER}
+                      src={dish.image_url ? getStaticUrl(dish.image_url) : DISH_PLACEHOLDER}
                       height={200}
                       width="100%"
                       style={{ objectFit: "cover" }}

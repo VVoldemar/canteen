@@ -284,6 +284,7 @@ export interface UpdateDishRequest {
   name?: string;
   price?: number;
   ingredients?: DishIngredientLink[];
+  image_url?: string | null;
 }
 
 export interface PaginatedResponse<T> {

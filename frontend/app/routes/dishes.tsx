@@ -14,9 +14,11 @@ import {
   Tag,
   Typography,
   Empty,
+  Upload,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import type { UploadFile } from "antd/es/upload/interface";
+import { DeleteOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import type { Route } from "./+types/dishes";
 import {
   createDish,
@@ -27,6 +29,7 @@ import {
 } from "~/api/dishes";
 import { getIngredients } from "~/api/ingredients";
 import { ApiException } from "~/api/errors";
+import { getStaticUrl } from "~/api/client";
 import { useAuth } from "~/context/AuthContext";
 import type {
   CreateDishRequest,
@@ -61,6 +64,8 @@ export default function DishesPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientsLoading, setIngredientsLoading] = useState(false);
   const [form] = Form.useForm<CreateDishRequest>();
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [initialHadImage, setInitialHadImage] = useState(false);
 
   const canManage = user?.role === "admin" || user?.role === "cook";
   const canDelete = user?.role === "admin";
@@ -112,6 +117,8 @@ export default function DishesPage() {
   const openCreateModal = async () => {
     setEditing(null);
     form.resetFields();
+    setFileList([]);
+    setInitialHadImage(false);
     form.setFieldValue("ingredients", [
       { ingredient_id: undefined, amount_thousandth_measure: undefined },
     ]);
@@ -122,6 +129,7 @@ export default function DishesPage() {
   const openEditModal = async (record: Dish) => {
     setEditing(record);
     form.resetFields();
+    setFileList([]);
     setModalOpen(true);
     setDetailLoading(true);
     await loadIngredients();
@@ -136,6 +144,20 @@ export default function DishesPage() {
           amount_thousandth_measure: item.amount_thousandth_measure,
         })),
       });
+      
+      if (detail.image_url) {
+        setInitialHadImage(true);
+        setFileList([
+          {
+            uid: "-1",
+            name: "image.jpg",
+            status: "done",
+            url: getStaticUrl(detail.image_url),
+          },
+        ]);
+      } else {
+        setInitialHadImage(false);
+      }
     } catch (error) {
       if (error instanceof ApiException) {
         message.error(error.error.message);
@@ -152,21 +174,32 @@ export default function DishesPage() {
       const values = await form.validateFields();
       setSaving(true);
 
+      const imageFile = 
+        fileList.length > 0 && fileList[0].originFileObj
+          ? fileList[0].originFileObj
+          : undefined;
+
       if (editing) {
         const payload: UpdateDishRequest = {
           name: values.name,
           price: values.price,
           ingredients: values.ingredients,
         };
-        await updateDish(editing.id, payload);
+        
+        if (initialHadImage && fileList.length === 0) {
+          payload.image_url = null;
+        }
+        
+        await updateDish(editing.id, payload, imageFile);
         message.success("Блюдо обновлено");
       } else {
-        await createDish(values);
+        await createDish(values, imageFile);
         message.success("Блюдо создано");
       }
 
       setModalOpen(false);
       form.resetFields();
+      setFileList([]);
       await loadDishes();
     } catch (error) {
       if (error instanceof ApiException) {
@@ -199,6 +232,33 @@ export default function DishesPage() {
         title: "ID",
         dataIndex: "id",
         width: 80,
+      },
+      {
+        title: "Изображение",
+        dataIndex: "image_url",
+        width: 100,
+        render: (url: string | undefined) =>
+          url ? (
+            <img
+              src={getStaticUrl(url)}
+              alt="dish"
+              style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 4 }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                background: "#f0f0f0",
+                borderRadius: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              —
+            </div>
+          ),
       },
       {
         title: "Название",
@@ -318,6 +378,40 @@ export default function DishesPage() {
               rules={[{ required: true, message: "Введите цену" }]}
             >
               <InputNumber min={0} className="w-full" />
+            </Form.Item>
+
+            <Form.Item label="Изображение">
+              <Upload
+                listType="picture"
+                fileList={fileList}
+                beforeUpload={(file) => {
+                  const isImage = file.type.startsWith("image/");
+                  if (!isImage) {
+                    message.error("Можно загружать только изображения");
+                    return false;
+                  }
+                  const isLt10M = file.size / 1024 / 1024 < 10;
+                  if (!isLt10M) {
+                    message.error("Размер изображения не должен превышать 10MB");
+                    return false;
+                  }
+                  setFileList([
+                    {
+                      uid: file.uid || String(Date.now()),
+                      name: file.name,
+                      status: "done",
+                      originFileObj: file,
+                    },
+                  ]);
+                  return false;
+                }}
+                onRemove={() => {
+                  setFileList([]);
+                }}
+                maxCount={1}
+              >
+                <Button icon={<UploadOutlined />}>Выбрать изображение</Button>
+              </Upload>
             </Form.Item>
 
             <Form.List
