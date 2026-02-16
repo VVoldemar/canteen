@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from fastapi import HTTPException, status
 
 from app.models.notification import Notification
@@ -29,9 +29,11 @@ class NotificationCRUD:
             await notification_manager.send_personal_notification(
                 user_id=db_obj.user_id,
                 message={
+                    "type": "new_notification",
                     "id": db_obj.id,
                     "title": db_obj.title,
                     "body": db_obj.body,
+                    "read": db_obj.read,
                     "created_at": db_obj.created_at.isoformat()
                 }
             )
@@ -42,6 +44,32 @@ class NotificationCRUD:
             logger.error(f"Error creating notification: {e}")
             raise HTTPException(status_code=500, detail="Failed to create notification")
             
+    async def get_by_id(self, session: AsyncSession, notification_id: int) -> Optional[Notification]:
+        """Получить уведомление по ID."""
+        stmt = select(self.model).where(self.model.id == notification_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_unread_count(self, session: AsyncSession, user_id: int) -> int:
+        """Получить количество непрочитанных уведомлений."""
+        stmt = select(func.count()).select_from(self.model).where(
+            self.model.user_id == user_id,
+            self.model.read == False
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def mark_all_as_read(self, session: AsyncSession, user_id: int) -> int:
+        """Пометить все уведомления пользователя как прочитанные."""
+        stmt = (
+            update(self.model)
+            .where(self.model.user_id == user_id, self.model.read == False)
+            .values(read=True)
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+        return result.rowcount
+
     async def get_all_by_user(self, session: AsyncSession, user_id: int):
         stmt = select(self.model).where(self.model.user_id == user_id).order_by(self.model.created_at.desc())
         result = await session.execute(stmt)

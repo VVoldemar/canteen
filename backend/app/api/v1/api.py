@@ -9,7 +9,7 @@ from app.api.v1.endpoints.reviews import reviews_router
 from app.api.v1.endpoints.applications import applications_router
 from app.api.v1.endpoints.ingredients import ingredients_router
 from app.api.v1.endpoints.statistics import statistics_router
-from app.api.v1.endpoints.notifications import notifications_router
+from app.api.v1.endpoints.notifications import notifications_router, ws_router
 from app.api.v1.endpoints.reports import reports_router
 from app.api.v1.endpoints.subscriptions import subscriptions_router
 
@@ -26,4 +26,5 @@ def include_routers(app: FastAPI):
     app.include_router(statistics_router)
     app.include_router(subscriptions_router)
     app.include_router(notifications_router)
+    app.include_router(ws_router)
     app.include_router(reports_router)

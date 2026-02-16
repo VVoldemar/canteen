@@ -77,6 +77,38 @@ async def create_notification(
 
 
 @notifications_router.patch(
+    "/read-all",
+    summary="Отметить все прочитанными",
+    responses={
+        200: {'description': 'Все уведомления отмечены прочитанными'},
+        401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+    }
+)
+async def mark_all_read(
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
+    session: AsyncSession = Depends(get_session)
+):
+    count = await notifications_manager.mark_all_as_read(session, user.id)
+    return {"marked": count}
+
+
+@notifications_router.get(
+    "/unread-count",
+    summary="Количество непрочитанных",
+    responses={
+        200: {'description': 'OK'},
+        401: {'model': ErrorResponse, 'description': 'Не авторизован'},
+    }
+)
+async def get_unread_count(
+    user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
+    session: AsyncSession = Depends(get_session)
+):
+    count = await notifications_manager.get_unread_count(session, user.id)
+    return {"count": count}
+
+
+@notifications_router.patch(
     "/{notification_id}/read", 
     summary="Отметить прочитанным", 
     response_model=NotificationResponse 
@@ -94,4 +126,4 @@ async def make_readed(
     if notification.user_id != user.id:
         raise HTTPException(status_code=403, detail="It's not your notification")
 
-    return await notifications_manager.mark_as_read(session, notification_id)
+    return await notifications_manager.mark_as_read(session, notification_id, user.id)
