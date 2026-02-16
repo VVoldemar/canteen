@@ -128,8 +128,7 @@ async def update_own_balance(
     user=Depends(require_roles(UserRole.ADMIN, UserRole.COOK, UserRole.STUDENT)),
     session: AsyncSession =Depends(get_session)
     ):
-    await users_manager.update_balance(session, user, summa)
-    return
+    await users_manager.update_balance(session, user.id, summa)
 
 
 @users_router.patch(
@@ -152,14 +151,14 @@ async def update_user_balance_admin(
     session: AsyncSession =Depends(get_session)
     ):
     change_user = await users_manager.get_by_id(session, user_id)
-    await users_manager.update_balance(session, change_user, summa)
+    await users_manager.update_balance(session, change_user.id, summa)
     return change_user
 
 
 @users_router.get(
     "/",
     summary="Получить список пользователей",
-    description="Доступно только администраторам",
+    description="Доступно только администраторам. Поддерживает поиск по ID и ФИО (в любой последовательности)",
     response_model=PaginatedResponse[UserResponse],
     responses={
         200: {"model": PaginatedResponse[UserResponse]},
@@ -170,10 +169,11 @@ async def update_user_balance_admin(
 async def get_users(
     params: Annotated[PaginationParams, Depends()],
     role: Optional[str] = None,
+    search: Optional[str] = None,
     user=Depends(require_roles(UserRole.ADMIN)),
     session: AsyncSession = Depends(get_session)
     ):  
-    return await users_manager.get_all_paginated(session, params, role)
+    return await users_manager.get_all_paginated(session, params, role, search)
 
 
 @users_router.get(

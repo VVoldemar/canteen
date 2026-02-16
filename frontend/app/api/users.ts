@@ -13,6 +13,7 @@ export interface GetUsersParams {
   page?: number;
   limit?: number;
   role?: UserRole;
+  search?: string;
 }
 
 export async function getUsers(
@@ -23,6 +24,7 @@ export async function getUsers(
       page: params.page ?? 1,
       limit: params.limit ?? 20,
       role: params.role,
+      search: params.search,
     },
   });
   return response.data;

@@ -1,4 +1,4 @@
-import type { PurchaseSubscriptionRequest, Subscription } from "~/types";
+import type { CancelSubscriptionResponse, PurchaseSubscriptionRequest, PurchaseSubscriptionResponse, Subscription } from "~/types";
 import apiClient from "./client";
 
 export async function getMySubscription(): Promise<Subscription> {
@@ -8,10 +8,17 @@ export async function getMySubscription(): Promise<Subscription> {
 
 export async function purchaseSubscription(
   data: PurchaseSubscriptionRequest,
-): Promise<Subscription> {
-  const response = await apiClient.post<Subscription>(
+): Promise<PurchaseSubscriptionResponse> {
+  const response = await apiClient.post<PurchaseSubscriptionResponse>(
     "/subscriptions/purchase",
     data,
+  );
+  return response.data;
+}
+
+export async function cancelSubscription(): Promise<CancelSubscriptionResponse> {
+  const response = await apiClient.post<CancelSubscriptionResponse>(
+    "/subscriptions/cancel",
   );
   return response.data;
 }
