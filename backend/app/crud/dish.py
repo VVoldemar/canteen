@@ -1,9 +1,11 @@
+import os
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
-import logging
 from typing import Optional
 
 from app.crud.paginating import paginate
@@ -116,6 +118,8 @@ class DishCRUD:
                     detail="Dish not found"
                 )
 
+            old_image_url = dish.image_url
+
             if update_data.name is not None:
                 dish.name = update_data.name
 
@@ -123,7 +127,23 @@ class DishCRUD:
                 dish.price = update_data.price
 
             if image_href is not None:
+                if old_image_url:
+                    old_file_path = old_image_url.lstrip("/")
+                    if os.path.exists(old_file_path):
+                        try:
+                            os.remove(old_file_path)
+                        except Exception:
+                            pass
                 dish.image_url = image_href
+            elif 'image_url' in update_data.model_fields_set and update_data.image_url is None:
+                if old_image_url:
+                    old_file_path = old_image_url.lstrip("/")
+                    if os.path.exists(old_file_path):
+                        try:
+                            os.remove(old_file_path)
+                        except Exception:
+                            pass
+                dish.image_url = None
 
             if update_data.ingredients is not None:
                 from sqlalchemy import delete

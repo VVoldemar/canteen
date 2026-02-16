@@ -133,7 +133,7 @@ async def update_dish(
         finally:
             await image.close()
             
-    public_url = f"/static/dishes/{unique_filename}"
+    public_url = f"/static/dishes/{unique_filename}" if unique_filename else None
         
     try:
         data_dict = json.loads(dish_data)

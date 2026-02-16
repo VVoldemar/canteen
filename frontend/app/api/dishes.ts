@@ -34,16 +34,28 @@ export async function getDish(id: number): Promise<DishDetail> {
 
 export async function createDish(
   data: CreateDishRequest,
+  image?: File,
 ): Promise<Dish> {
-  const response = await apiClient.post<Dish>("/dishes", data);
+  const formData = new FormData();
+  formData.append("dish_data", JSON.stringify(data));
+  if (image) {
+    formData.append("image", image);
+  }
+  const response = await apiClient.post<Dish>("/dishes", formData);
   return response.data;
 }
 
 export async function updateDish(
   id: number,
   data: UpdateDishRequest,
+  image?: File,
 ): Promise<DishDetail> {
-  const response = await apiClient.patch<DishDetail>(`/dishes/${id}`, data);
+  const formData = new FormData();
+  formData.append("dish_data", JSON.stringify(data));
+  if (image) {
+    formData.append("image", image);
+  }
+  const response = await apiClient.patch<DishDetail>(`/dishes/${id}`, formData);
   return response.data;
 }
 

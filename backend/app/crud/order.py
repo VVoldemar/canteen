@@ -7,15 +7,17 @@ from fastapi import HTTPException, status
 import logging
 
 from app.crud.paginating import paginate
+from app.crud.notification import notifications_manager
 
 from app.models.order import Order
 from app.models.associations import OrderItem
 from app.models.dish import Dish
 from app.models.user import User
 
-from app.core.enums import OrderStatus
+from app.core.enums import OrderStatus, UserRole
 from app.schemas.order import CreateOrderRequest, OrderResponse
 from app.schemas.paginating import PaginationParams, PaginatedResponse
+from app.schemas.notification import CreateNotificationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,8 @@ class OrderCRUD:
         stmt = (
             select(self.model)
             .options(
-                selectinload(self.model.dishes).joinedload(OrderItem.dish)
+                selectinload(self.model.dishes).selectinload(OrderItem.dish),
+                joinedload(self.model.orderer) 
             )
             .where(self.model.id == order_id)
         )
@@ -53,6 +56,7 @@ class OrderCRUD:
         """
         query = select(self.model).options(
             selectinload(self.model.dishes).selectinload(OrderItem.dish),
+            selectinload(self.model.orderer),
         ).order_by(self.model.ordered_at.desc())
 
         if user_id:
@@ -127,7 +131,24 @@ class OrderCRUD:
                 session.add(order_item)
             
             await session.commit()
-            return await self.get_by_id(session, new_order.id)
+            order_result = await self.get_by_id(session, new_order.id)
+            
+            try:
+                cooks_stmt = select(User).where(User.role == UserRole.COOK)
+                cooks_result = await session.execute(cooks_stmt)
+                cooks = cooks_result.scalars().all()
+                
+                for cook in cooks:
+                    notification = CreateNotificationRequest(
+                        user_id=cook.id,
+                        title="Новый заказ",
+                        body=f"Поступил новый оплаченный заказ #{new_order.id} от {user.name} {user.surname}"
+                    )
+                    await notifications_manager.create(session, notification)
+            except Exception as e:
+                logger.warning(f"Failed to send notification to cooks: {e}")
+            
+            return order_result
 
         except HTTPException:
             await session.rollback()
@@ -146,7 +167,18 @@ class OrderCRUD:
              
         order.status = OrderStatus.READY
         await session.commit()
-        return order
+        
+        try:
+            notification = CreateNotificationRequest(
+                user_id=order.user_id,
+                title="Заказ готов!",
+                body=f"Ваш заказ #{order.id} готов к выдаче. Приятного аппетита!"
+            )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send order ready notification: {e}")
+        
+        return await self.get_by_id(session, order_id)
 
     async def mark_prepared(self, session: AsyncSession, order_id: int) -> Order:
         """Повар отмечает заказ готовым к выдаче."""
@@ -157,7 +189,18 @@ class OrderCRUD:
             
         order.status = OrderStatus.READY
         await session.commit()
-        return order
+        
+        try:
+            notification = CreateNotificationRequest(
+                user_id=order.user_id,
+                title="Заказ готов!",
+                body=f"Ваш заказ #{order.id} готов к выдаче. Приятного аппетита!"
+            )
+            await notifications_manager.create(session, notification)
+        except Exception as e:
+            logger.warning(f"Failed to send order ready notification: {e}")
+        
+        return await self.get_by_id(session, order_id)
 
     async def mark_served(self, session: AsyncSession, order_id: int) -> Order:
         """Ученик подтверждает получение заказа."""
@@ -169,7 +212,7 @@ class OrderCRUD:
         order.status = OrderStatus.SERVED
         order.completed_at = datetime.now() 
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
     async def cancel(self, session: AsyncSession, order_id: int) -> Order:
         """
@@ -201,6 +244,6 @@ class OrderCRUD:
         order.status = OrderStatus.CANCELLED
         
         await session.commit()
-        return order
+        return await self.get_by_id(session, order_id)
 
 orders_manager = OrderCRUD(Order)

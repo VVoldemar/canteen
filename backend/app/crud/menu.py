@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
@@ -107,29 +107,47 @@ class MenuCRUD:
             return await self.get_by_id(session, id)
             
         try:
-            stmt = (
-                update(self.model)
-                .where(self.model.id == id)
-                .values(**update_data)
-                .execution_options(synchronize_session="fetch")
-            )
+            dish_ids = update_data.pop('dish_ids', None)
             
-            result = await session.execute(stmt)
-            
-            if result.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Menu not found"
+            if update_data:
+                stmt = (
+                    update(self.model)
+                    .where(self.model.id == id)
+                    .values(**update_data)
+                    .execution_options(synchronize_session="fetch")
                 )
+                await session.execute(stmt)
+            
+            if dish_ids is not None:
+                await session.execute(
+                    delete(MenuItem).where(MenuItem.menu_id == id)
+                )
+                
+                for d_id in dish_ids:
+                    menu_item = MenuItem(
+                        menu_id=id,
+                        dish_id=d_id
+                    )
+                    session.add(menu_item)
             
             await session.commit()
             return await self.get_by_id(session, id)
             
+        except HTTPException:
+            await session.rollback()
+            raise
         except IntegrityError:
             await session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Update constraint violation"
+            )
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Error updating menu: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update menu"
             )
     
     async def delete(self, session: AsyncSession, id: int) -> bool:
